@@ -39,7 +39,10 @@ def values_equal(actual: Any, expected: Any, *, atol: float = 0.0) -> bool:
         return math.isclose(actual, expected, rel_tol=RTOL, abs_tol=a_tol)
 
     if _is_number(expected) and _is_number(actual):
-        return math.isclose(float(actual), float(expected), rel_tol=RTOL, abs_tol=a_tol)
+        try:
+            return math.isclose(float(actual), float(expected), rel_tol=RTOL, abs_tol=a_tol)
+        except (OverflowError, ValueError):
+            return actual == expected
 
     if isinstance(expected, complex) or isinstance(actual, complex):
         if not (isinstance(expected, complex) and isinstance(actual, complex)):

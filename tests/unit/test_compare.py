@@ -1,4 +1,5 @@
 """Tests for output comparison, including negative controls (R7)."""
+
 from __future__ import annotations
 
 import math
