@@ -23,3 +23,23 @@ Recorded 2026-11-26. Re-verify anything surprising with R9.
 ## Verified library facts
 (append as verified: evalplus record shape, openai SDK reasoning_content
 handling, etc.)
+
+### EvalPlus (verified 2026-11-26)
+- `get_human_eval_plus()` → dict of 164 records. Keys: `atol`, `base_input`,
+  `canonical_solution`, `contract`, `entry_point`, `plus_input`, `prompt`,
+  `task_id`, `test`.
+- `get_mbpp_plus()` → dict of 378 records. Keys: `assertion`, `atol`,
+  `base_input`, `canonical_solution`, `contract`, `entry_point`, `plus_input`,
+  `prompt`, `task_id`.
+- Inputs are lists of positional-argument lists. Input values may include
+  complex numbers, None, bool, dict, tuple (codec extended to handle complex).
+- HumanEval+ spec lives in the function docstring. MBPP+ spec is a module-level
+  triple-quoted string containing prose + `assert` worked examples; we strip the
+  assert lines.
+- Canonical full source = `prompt + canonical_solution` (prompt has the import
+  header and signature).
+- Through our sandbox pipeline: 539/542 canonicals run cleanly on 20
+  base+plus inputs (99.45%). 3 excluded (Mbpp/737, 787, 794) because they return
+  `re.Match` objects (not codec-serialisable). Recorded in `data/exclusions.json`.
+- Datasets download from GitHub releases on first use (cached under ~/.cache).
+
