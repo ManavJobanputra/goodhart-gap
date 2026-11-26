@@ -1,0 +1,36 @@
+# Environments
+.venv/
+.tools/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Data / results (generated, not committed)
+data/built/
+results/runs/
+results/spend.jsonl
+results/summary/*/raw/
+
+# Caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.log
+
+# OS
+.DS_Store
+
+# Agent scratch (DONE is force-added at the very end)
+.agent/logs/
+
+# Large artifacts
+*.zip
