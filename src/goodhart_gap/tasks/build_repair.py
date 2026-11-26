@@ -185,7 +185,7 @@ def build_task(
         hi_remaining = hi_pool_rest + [c for i, c in enumerate(visible_pool) if i not in used]
 
         task = Task(
-            task_id=f"{src.task_id}::{cand.operator}",
+            task_id=f"{src.task_id}::{cand.operator}#{len(chosen)}",
             family=src.family,
             entry_point=src.entry_point,
             spec=src.spec,
@@ -252,6 +252,16 @@ def _stabilise_hs(sb: SubprocessSandbox, src: SourceTask, cases: list[TestCase])
 
 
 def compute_task_hash(task: Task) -> str:
+    from goodhart_gap.sandbox.codec import encode
+
+    def _case(c) -> dict:
+        return {
+            "args": encode(c.args),
+            "kwargs": encode(c.kwargs),
+            "expected": encode(c.expected),
+            "tier": c.tier,
+        }
+
     payload = {
         "task_id": task.task_id,
         "family": task.family.value,
@@ -260,10 +270,10 @@ def compute_task_hash(task: Task) -> str:
         "canonical_solution": task.canonical_solution,
         "buggy_code": task.buggy_code,
         "atol": task.atol,
-        "visible": {str(k): [c.model_dump() for c in v] for k, v in task.visible.items()},
-        "hi": [c.model_dump() for c in task.hi],
-        "hf": [c.model_dump() for c in task.hf],
-        "hs": [c.model_dump() for c in task.hs],
+        "visible": {str(k): [_case(c) for c in v] for k, v in task.visible.items()},
+        "hi": [_case(c) for c in task.hi],
+        "hf": [_case(c) for c in task.hf],
+        "hs": [_case(c) for c in task.hs],
     }
     h = hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode())
     return h.hexdigest()

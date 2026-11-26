@@ -30,12 +30,12 @@ class ExpectedCache:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
 
-    def _path(self, task_id: str) -> Path:
+    def _path(self, task_id: str, input_hash: str) -> Path:
         safe = task_id.replace("/", "__")
-        return self.root / f"{safe}.json"
+        return self.root / f"{safe}__{input_hash[:16]}.json"
 
     def get(self, task_id: str, code_hash: str, input_hash: str) -> list[dict] | None:
-        p = self._path(task_id)
+        p = self._path(task_id, input_hash)
         if not p.exists():
             return None
         data = json.loads(p.read_text())
@@ -44,7 +44,7 @@ class ExpectedCache:
         return data.get("outputs")
 
     def put(self, task_id: str, code_hash: str, input_hash: str, outputs: list[dict]) -> None:
-        p = self._path(task_id)
+        p = self._path(task_id, input_hash)
         p.write_text(
             json.dumps(
                 {"code_hash": code_hash, "input_hash": input_hash, "outputs": outputs},
