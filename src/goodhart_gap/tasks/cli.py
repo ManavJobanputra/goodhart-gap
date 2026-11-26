@@ -42,3 +42,45 @@ def inspect(
         console.print(f"\n[bold]{t.task_id}[/bold] entry={t.entry_point} atol={t.atol}")
         console.print(f"  spec: {t.spec[:160]!r}")
         console.print(f"  base_input[0]: {t.base_input[0] if t.base_input else None}")
+
+
+@tasks_app.command("build")
+def build(
+    family: str = typer.Option("all", help="he_repair | mbpp_repair | all"),
+    limit: int = typer.Option(0, help="Limit number of source tasks (0 = all)."),
+) -> None:
+    """Build repair tasks from sources and write the manifest."""
+    from goodhart_gap.schema import Family
+    from goodhart_gap.tasks.build import build_all
+
+    fams = [Family.HE_REPAIR, Family.MBPP_REPAIR] if family == "all" else [Family(family)]
+    manifest, stats = build_all(families=fams, limit=(limit or None))
+    console.print(
+        f"[green]built {stats.built} tasks[/green] from {len(sources_note(fams))} sources"
+    )
+    console.print(f"counts: {manifest['counts']}")
+    console.print(f"operators: {manifest['operator_counts']}")
+    console.print(f"difficulty: {manifest['difficulty_counts']}")
+    console.print(f"skipped: {len(stats.skipped)}  hs_shortfalls: {len(manifest['hs_shortfalls'])}")
+    console.print(f"manifest content_hash: {manifest['content_hash'][:16]}")
+
+
+def sources_note(fams):
+    from goodhart_gap.tasks.registry import load_sources
+
+    return load_sources(fams)
+
+
+@tasks_app.command("validate")
+def validate() -> None:
+    """Validate every built task (canonical passes tiers; buggy fails every V)."""
+    from goodhart_gap.tasks.validate import validate_all
+
+    results = validate_all()
+    console.print(
+        f"[bold]validated {results['total']} tasks:[/bold] "
+        f"{results['valid']} valid, {len(results['invalid'])} invalid, "
+        f"{results['hs_short']} with HS shortfall"
+    )
+    for item in results["invalid"][:20]:
+        console.print(f"  [red]{item['task_id']}[/red]: {item['problems']}")
