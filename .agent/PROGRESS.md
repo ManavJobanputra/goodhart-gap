@@ -8,7 +8,8 @@ Started: 2026-11-26T23:10Z   Last update: 2026-11-26T23:10Z
   Evidence: docs/SPEC.md (sections 3.1-3.8), THREAT_MODEL.md, ANALYSIS_PLAN.md (H1-H6), TAXONOMY.md, CHECKPOINTS.md skeleton, DESIGN.md all written and committed.
 - [x] M2 Schema, codec, compare, sandbox — status: DONE — commit: — tag: m02-core
   Evidence: `uv run pytest tests/unit/test_codec.py tests/unit/test_compare.py tests/unit/test_sandbox.py tests/unit/test_sandbox_exec.py` → all pass (13 sandbox tests incl. infinite-loop kill <3s, RSS OOM kill, env-canary invisible, stdout-spoof non-forge, sys.exit non-forge, grandchild reaped; 10 codec; 17 compare incl. negative controls; sandbox-exec network-deny executed). RLIMIT_AS unsettable on this macOS → watchdog is the memory mechanism (documented).
-- [ ] M3 Task sources — status: TODO — commit: — tag: m03-sources
+- [x] M3 Task sources — status: DONE — commit: — tag: m03-sources
+  Evidence: `gg tasks inspect` → he_repair 164, mbpp_repair 378 (total 542); canonical-through-pipeline check → processed 542 ok 539 bad 3 rate 0.9945 (≥99%); exclusions written for Mbpp/737,787,794 (return re.Match, non-serialisable). `uv run pytest tests/unit/test_sources.py -m data` → 2 passed.
 - [ ] M4 Mutation, tiers, splits, build — status: TODO — commit: — tag: m04-tasks
 - [ ] M5 Verification ladder, tamper — status: TODO — commit: — tag: m05-verify
 - [ ] M6 Providers — status: TODO — commit: — tag: m06-providers
@@ -26,4 +27,4 @@ Started: 2026-11-26T23:10Z   Last update: 2026-11-26T23:10Z
 ## Evidence
 (Each milestone's acceptance command + trimmed output is pasted here when checked off.)
 
-NEXT ACTION: M3 — task sources: load HumanEval+/MBPP+ into SourceTask, compute expected outputs in sandbox.
+NEXT ACTION: M4 — mutation engine, fuzz/shift generators, nested splits, task build with manifest hash.
