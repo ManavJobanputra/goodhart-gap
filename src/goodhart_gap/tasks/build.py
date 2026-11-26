@@ -17,8 +17,9 @@ import json
 import warnings
 from pathlib import Path
 
+from goodhart_gap.sandbox.codec import decode, encode
 from goodhart_gap.sandbox.subprocess_sandbox import SubprocessSandbox
-from goodhart_gap.schema import Family, Task
+from goodhart_gap.schema import Family, Task, TestCase
 from goodhart_gap.tasks.build_repair import HS_TARGET, BuildStats, build_task
 from goodhart_gap.tasks.expected import ExpectedCache
 from goodhart_gap.tasks.registry import load_exclusions, load_sources
@@ -35,14 +36,33 @@ def _safe(task_id: str) -> str:
     return task_id.replace("/", "__").replace("::", "__")
 
 
+def _case_to_json(c: TestCase) -> dict:
+    return {
+        "args": encode(c.args),
+        "kwargs": encode(c.kwargs),
+        "expected": encode(c.expected),
+        "tier": c.tier,
+    }
+
+
+def _case_from_json(d: dict) -> TestCase:
+    return TestCase(
+        args=decode(d["args"]),
+        kwargs=decode(d.get("kwargs", {})),
+        expected=decode(d["expected"]),
+        tier=d.get("tier", "V"),
+    )
+
+
 def save_task(task: Task, root: Path) -> None:
     fam_dir = root / task.family.value
     fam_dir.mkdir(parents=True, exist_ok=True)
     safe = _safe(task.task_id)
     tests = {
-        "hi": [c.model_dump() for c in task.hi],
-        "hf": [c.model_dump() for c in task.hf],
-        "hs": [c.model_dump() for c in task.hs],
+        "hi": [_case_to_json(c) for c in task.hi],
+        "hf": [_case_to_json(c) for c in task.hf],
+        "hs": [_case_to_json(c) for c in task.hs],
+        "visible": {str(k): [_case_to_json(c) for c in v] for k, v in task.visible.items()},
     }
     with gzip.open(fam_dir / f"{safe}.tests.json.gz", "wt", encoding="utf-8") as f:
         json.dump(tests, f)
@@ -50,7 +70,8 @@ def save_task(task: Task, root: Path) -> None:
     meta["hi"] = []
     meta["hf"] = []
     meta["hs"] = []
-    (fam_dir / f"{safe}.json").write_text(json.dumps(meta, indent=2))
+    meta["visible"] = {}
+    (fam_dir / f"{safe}.json").write_text(json.dumps(meta, indent=2, default=str))
 
 
 def load_task(task_path: Path) -> Task:
@@ -60,11 +81,13 @@ def load_task(task_path: Path) -> Task:
     if gz.exists():
         with gzip.open(gz, "rt", encoding="utf-8") as f:
             tests = json.load(f)
-        from goodhart_gap.schema import TestCase
-
-        meta["hi"] = [TestCase.model_validate(c) for c in tests["hi"]]
-        meta["hf"] = [TestCase.model_validate(c) for c in tests["hf"]]
-        meta["hs"] = [TestCase.model_validate(c) for c in tests["hs"]]
+        meta["hi"] = [_case_from_json(c) for c in tests["hi"]]
+        meta["hf"] = [_case_from_json(c) for c in tests["hf"]]
+        meta["hs"] = [_case_from_json(c) for c in tests["hs"]]
+        if "visible" in tests:
+            meta["visible"] = {
+                int(k): [_case_from_json(c) for c in v] for k, v in tests["visible"].items()
+            }
     return Task.model_validate(meta)
 
 

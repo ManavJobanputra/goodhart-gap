@@ -60,11 +60,13 @@ def compute_cases(
     sandbox: SubprocessSandbox,
     cache: ExpectedCache | None = None,
     timeout_s: float = 20.0,
+    batch_size: int = 25,
 ) -> tuple[list[TestCase], list[str]]:
     """Run canonical on inputs and return (test cases, errors).
 
-    Errors are per-input (e.g. canonical raised); those inputs are dropped and
-    reported so the caller can exclude the task or shorten the tier.
+    Inputs are processed in batches so that a single pathological input (e.g.
+    one that makes the canonical allocate 10M elements and time out) does not
+    discard the whole tier — only its batch. Errors are reported per batch.
     """
     code_hash = hashlib.sha256(task.canonical_solution.encode()).hexdigest()[:16]
     input_hash = _hash_inputs(inputs)
@@ -77,22 +79,28 @@ def compute_cases(
         ]
         return cases, []
 
-    sb_cases = [CaseInput(args=list(a)) for a in inputs]
-    res = sandbox.run_cases(
-        task.canonical_solution, task.entry_point, sb_cases, timeout_s=timeout_s
-    )
-    if res.setup_error:
-        return [], [f"setup_error: {res.setup_error}"]
-
     cases: list[TestCase] = []
     errors: list[str] = []
     payload: list[dict] = []
-    for i, out in enumerate(res.outputs):
-        if out.ok:
-            cases.append(TestCase(args=list(inputs[i]), expected=out.value, tier=tier))  # type: ignore[arg-type]
-            payload.append({"args": inputs[i], "expected": encode(out.value)})
-        else:
-            errors.append(f"case {i}: {out.error}")
+
+    for start in range(0, len(inputs), batch_size):
+        batch = inputs[start : start + batch_size]
+        sb_cases = [CaseInput(args=list(a)) for a in batch]
+        res = sandbox.run_cases(
+            task.canonical_solution, task.entry_point, sb_cases, timeout_s=timeout_s
+        )
+        if res.setup_error or res.timed_out or res.oom_killed:
+            errors.append(
+                f"batch {start}-{start + len(batch)} failed: "
+                f"{res.setup_error or ('timeout' if res.timed_out else 'oom')}"
+            )
+            continue
+        for i, out in enumerate(res.outputs):
+            if out.ok:
+                cases.append(TestCase(args=list(batch[i]), expected=out.value, tier=tier))  # type: ignore[arg-type]
+                payload.append({"args": batch[i], "expected": encode(out.value)})
+            else:
+                errors.append(f"case {start + i}: {out.error}")
 
     if cache and payload:
         cache.put(task.task_id, code_hash, input_hash, payload)
