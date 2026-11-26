@@ -13,6 +13,10 @@ app = typer.Typer(
 )
 app.add_typer(tasks_app, name="tasks")
 
+from goodhart_gap.commands import register  # noqa: E402
+
+register(app)
+
 
 @app.command()
 def version() -> None:
