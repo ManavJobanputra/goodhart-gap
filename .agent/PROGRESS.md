@@ -2,7 +2,8 @@
 Started: 2026-11-26T23:10Z   Last update: 2026-11-26T23:10Z
 
 ## Milestones
-- [ ] M0 Bootstrap — status: IN_PROGRESS — commit: — tag: m00-bootstrap
+- [x] M0 Bootstrap — status: DONE — commit: 25df81e — tag: m00-bootstrap
+  Evidence: `make check` → "All checks passed! ... 2 passed"; `gh repo view` → "goodhart-gap PRIVATE https://github.com/ManavJobanputra/goodhart-gap"; `git rev-list --count HEAD` → 8; pushed to origin/main.
 - [ ] M1 Design docs — status: TODO — commit: — tag: m01-design-docs
 - [ ] M2 Schema, codec, compare, sandbox — status: TODO — commit: — tag: m02-core
 - [ ] M3 Task sources — status: TODO — commit: — tag: m03-sources
@@ -23,4 +24,4 @@ Started: 2026-11-26T23:10Z   Last update: 2026-11-26T23:10Z
 ## Evidence
 (Each milestone's acceptance command + trimmed output is pasted here when checked off.)
 
-NEXT ACTION: M0 — write AGENTS.md and .agent state files, then uv sync and first commits.
+NEXT ACTION: M1 — write design docs (SPEC, THREAT_MODEL, ANALYSIS_PLAN, TAXONOMY, CHECKPOINTS, DESIGN).

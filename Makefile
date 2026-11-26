@@ -9,7 +9,7 @@ setup:
 
 hooks:
 	@mkdir -p .git/hooks
-	@printf '#!/bin/sh\npython scripts/check_no_secrets.py\n' > .git/hooks/pre-commit
+	@printf '#!/bin/sh\npython3 scripts/check_no_secrets.py\n' > .git/hooks/pre-commit
 	@chmod +x .git/hooks/pre-commit
 	@echo "pre-commit hook installed"
 
