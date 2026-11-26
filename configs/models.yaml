@@ -1,0 +1,93 @@
+# Model registry. Prices are per 1M tokens. Verify before trusting: prices
+# change. `price_checked` records when the numbers were last confirmed.
+# Budget tracking uses the PEAK price (conservative) for DeepSeek.
+
+models:
+  deepseek-flash:
+    provider: deepseek
+    base_url: https://api.deepseek.com
+    api_key_env: DEEPSEEK_API_KEY
+    model: deepseek-flash
+    price_checked: "2026-11-26"
+    price_source: https://api-docs.deepseek.com/quick_start/pricing/
+    # USD per 1M tokens (peak = 01:00-04:00 and 06:00-10:00 UTC, Mon-Fri)
+    price_input_cache_hit: 0.006
+    price_input_cache_miss: 0.30
+    price_output: 1.20
+    # off-peak prices, for reference / when known to be off-peak:
+    price_offpeak_input_cache_hit: 0.003
+    price_offpeak_input_cache_miss: 0.15
+    price_offpeak_output: 0.60
+    thinking_default: enabled
+    context_tokens: 1000000
+    max_output_tokens: 384000
+
+  deepseek-v4-pro:
+    provider: deepseek
+    base_url: https://api.deepseek.com
+    api_key_env: DEEPSEEK_API_KEY
+    model: deepseek-v4-pro
+    price_checked: "2026-11-26"
+    price_source: https://api-docs.deepseek.com/quick_start/pricing/
+    price_input_cache_hit: 0.006
+    price_input_cache_miss: 0.30
+    price_output: 1.20
+    thinking_default: enabled
+    context_tokens: 1000000
+    max_output_tokens: 384000
+
+  ollama:
+    provider: ollama
+    base_url: http://localhost:11434/v1
+    api_key_env: ""
+    model: qwen2.5-coder:7b
+    price_checked: "2026-11-26"
+    price_source: local
+    price_input_cache_hit: 0.0
+    price_input_cache_miss: 0.0
+    price_output: 0.0
+    thinking_default: disabled
+    context_tokens: 32768
+    max_output_tokens: 8192
+
+  groq-placeholder:
+    provider: groq
+    base_url: https://api.groq.com/openai/v1
+    api_key_env: GROQ_API_KEY
+    model: PLACEHOLDER
+    price_checked: "TODO(measure)"
+    price_source: https://groq.com/pricing
+    price_input_cache_hit: 0.0
+    price_input_cache_miss: 0.0
+    price_output: 0.0
+    thinking_default: disabled
+    context_tokens: 32768
+    max_output_tokens: 8192
+
+  openrouter-placeholder:
+    provider: openrouter
+    base_url: https://openrouter.ai/api/v1
+    api_key_env: OPENROUTER_API_KEY
+    model: PLACEHOLDER
+    price_checked: "TODO(measure)"
+    price_source: https://openrouter.ai/models
+    price_input_cache_hit: 0.0
+    price_input_cache_miss: 0.0
+    price_output: 0.0
+    thinking_default: disabled
+    context_tokens: 32768
+    max_output_tokens: 8192
+
+  gemini-placeholder:
+    provider: gemini
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    api_key_env: GEMINI_API_KEY
+    model: PLACEHOLDER
+    price_checked: "TODO(measure)"
+    price_source: https://ai.google.dev/pricing
+    price_input_cache_hit: 0.0
+    price_input_cache_miss: 0.0
+    price_output: 0.0
+    thinking_default: disabled
+    context_tokens: 32768
+    max_output_tokens: 8192
