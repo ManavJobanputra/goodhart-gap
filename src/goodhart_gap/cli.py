@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import typer
 
+from goodhart_gap.tasks.cli import tasks_app
+
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
     help="goodhart-gap: measure apparent vs genuine competence in code-repair agents.",
 )
+app.add_typer(tasks_app, name="tasks")
 
 
 @app.command()
