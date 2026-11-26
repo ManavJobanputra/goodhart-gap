@@ -22,7 +22,7 @@ import time
 from typing import Any
 
 from goodhart_gap.sandbox.base import CaseInput, CaseOutput, RunResult
-from goodhart_gap.sandbox.codec import decode
+from goodhart_gap.sandbox.codec import decode, encode
 
 # Environment variables that are safe to expose to a child. Everything else
 # (notably API keys) is dropped. This is the INV-4 allowlist.
@@ -63,7 +63,7 @@ class SubprocessSandbox:
         job = {
             "code": code,
             "entry_point": entry_point,
-            "cases": [{"args": c.args, "kwargs": c.kwargs} for c in cases],
+            "cases": [{"args": encode(c.args), "kwargs": encode(c.kwargs)} for c in cases],
         }
         payload = json.dumps(job).encode("utf-8")
 

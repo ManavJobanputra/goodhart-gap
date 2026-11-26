@@ -1,4 +1,5 @@
 """Tests for the safe tagged-JSON codec (INV-3)."""
+
 from __future__ import annotations
 
 import math
@@ -60,6 +61,11 @@ def test_roundtrip_nested() -> None:
 def test_roundtrip_big_int() -> None:
     big = 2**80
     assert roundtrip(big) == big
+
+
+def test_roundtrip_complex() -> None:
+    assert roundtrip(3 + 4j) == 3 + 4j
+    assert roundtrip([1 + 2j, 3 - 4j]) == [1 + 2j, 3 - 4j]
 
 
 def test_unknown_tag_rejected() -> None:

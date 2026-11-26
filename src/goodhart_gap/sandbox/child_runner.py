@@ -21,7 +21,7 @@ import os
 import sys
 import traceback
 
-from goodhart_gap.sandbox.codec import CodecError, encode
+from goodhart_gap.sandbox.codec import CodecError, decode, encode
 
 RESULT_FD = 3
 
@@ -69,8 +69,8 @@ def _run(job: dict) -> dict:
 
     outputs = []
     for case in cases:
-        args = case.get("args", [])
-        kwargs = case.get("kwargs", {})
+        args = decode(case.get("args", []))
+        kwargs = decode(case.get("kwargs", {}))
         try:
             # Deep-copy inputs so a mutating candidate cannot corrupt shared state.
             import copy

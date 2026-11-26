@@ -17,6 +17,7 @@ Tags:
 Everything else (None, bool, int in range, finite float, str) is emitted as a
 plain JSON value. Decoding rejects unknown tags.
 """
+
 from __future__ import annotations
 
 import base64
@@ -50,6 +51,8 @@ def _encode(obj: Any, depth: int) -> Any:
         return obj
     if isinstance(obj, (bytes, bytearray)):
         return {"__t__": "bytes", "b64": base64.b64encode(bytes(obj)).decode("ascii")}
+    if isinstance(obj, complex):
+        return {"__t__": "complex", "re": obj.real, "im": obj.imag}
     if isinstance(obj, tuple):
         return {"__t__": "tuple", "items": [_encode(x, depth + 1) for x in obj]}
     if isinstance(obj, list):
@@ -91,6 +94,8 @@ def _decode(obj: Any, depth: int) -> Any:
         return {_decode(k, depth + 1): _decode(v, depth + 1) for k, v in obj["items"]}
     if tag == "bytes":
         return base64.b64decode(obj["b64"].encode("ascii"))
+    if tag == "complex":
+        return complex(obj["re"], obj["im"])
     if tag == "float":
         v = obj["v"]
         if v == "nan":

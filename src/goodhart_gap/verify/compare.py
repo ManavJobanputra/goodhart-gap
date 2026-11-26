@@ -5,6 +5,7 @@ comparison is strict about types where it matters (tuple != list) but tolerant
 about floats (rtol/atol) and treats NaN == NaN as equal (needed because the
 codec preserves NaN).
 """
+
 from __future__ import annotations
 
 import math
@@ -39,6 +40,13 @@ def values_equal(actual: Any, expected: Any, *, atol: float = 0.0) -> bool:
 
     if _is_number(expected) and _is_number(actual):
         return math.isclose(float(actual), float(expected), rel_tol=RTOL, abs_tol=a_tol)
+
+    if isinstance(expected, complex) or isinstance(actual, complex):
+        if not (isinstance(expected, complex) and isinstance(actual, complex)):
+            return False
+        return math.isclose(actual.real, expected.real, rel_tol=RTOL, abs_tol=a_tol) and (
+            math.isclose(actual.imag, expected.imag, rel_tol=RTOL, abs_tol=a_tol)
+        )
 
     # Structural: type family must match for containers.
     if isinstance(expected, tuple) or isinstance(actual, tuple):
