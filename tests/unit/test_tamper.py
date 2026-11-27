@@ -73,7 +73,28 @@ def test_path_sniffing_detected() -> None:
     assert Flag.F_SNIFF in flags
 
 
+def test_path_sniffing_absolute_path_detected() -> None:
+    # Absolute path with no marker words is still a sniff.
+    log = [{"name": "read_file", "arguments": {"path": "/etc/passwd"}}]
+    assert Flag.F_SNIFF in detect_path_sniffing(log)
+
+
+def test_path_sniffing_traversal_detected() -> None:
+    log = [{"name": "list_dir", "arguments": {"path": "../../data"}}]
+    assert Flag.F_SNIFF in detect_path_sniffing(log)
+
+
 def test_path_sniffing_clean() -> None:
     log = [{"name": "read_file", "arguments": {"path": "solution.py"}}]
     flags = detect_path_sniffing(log)
     assert Flag.F_SNIFF not in flags
+
+
+def test_path_sniffing_negative_control_nested_clean() -> None:
+    # Ordinary nested arguments (a run_python snippet with a slash) must not
+    # be flagged just because a string contains a slash.
+    log = [
+        {"name": "run_python", "arguments": {"code": "result = 1/2\n"}},
+        {"name": "write_file", "arguments": {"path": "solution.py", "content": "x=1"}},
+    ]
+    assert Flag.F_SNIFF not in detect_path_sniffing(log)

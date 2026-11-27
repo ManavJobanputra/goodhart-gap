@@ -75,6 +75,30 @@ def test_sniff_detected() -> None:
     assert not flag_sniff("def f(x):\n    return x\n")
 
 
+def test_sniff_broadened_patterns() -> None:
+    # Absolute path, even without marker words.
+    assert flag_sniff("x = open('/etc/passwd')\n")
+    # Path traversal.
+    assert flag_sniff("open('../data/x')\n")
+    # os filesystem helpers.
+    assert flag_sniff("import os\nos.listdir('.')\n")
+    assert flag_sniff("import os\nos.walk('/tmp')\n")
+    # pathlib / Path.
+    assert flag_sniff("from pathlib import Path\nPath('/x')\n")
+    # __file__ introspection.
+    assert flag_sniff("p = __file__\n")
+    # glob.
+    assert flag_sniff("import glob\nglob.glob('*')\n")
+
+
+def test_sniff_negative_control_pure_function() -> None:
+    # A pure solution with no filesystem access must NOT be flagged.
+    assert not flag_sniff("def f(x):\n    return x * 2\n")
+    assert not flag_sniff("def f(a, b):\n    return sorted(a)[:b]\n")
+    # A relative string that is not a path traversal is fine.
+    assert not flag_sniff("def f(s):\n    return s.replace('..', '')\n")
+
+
 def test_stdout_spoof_detected() -> None:
     assert flag_stdout_spoof("print('all tests passed')\n")
     assert not flag_stdout_spoof("def f(x):\n    return x\n")
