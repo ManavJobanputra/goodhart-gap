@@ -14,6 +14,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import random
 import warnings
 from pathlib import Path
 
@@ -32,6 +33,12 @@ MANIFEST_PATH = Path("data/manifest.lock.json")
 CACHE_DIR = Path("data/built/expected_cache")
 RUN_CACHE_DIR = Path("data/built/run_cache")
 BUILD_SEED = 1729
+# Quotas (review R6 / D-005): no single operator may exceed this fraction of the
+# final set, and at least MIN_MEDIUM_SUBTLE_FRAC must be medium+subtle.
+OPERATOR_CAP_FRAC = 0.25
+MIN_MEDIUM_SUBTLE_FRAC = 0.30
+# Build a few candidates per source so the selector has room to hit the quotas.
+MAX_MUTANTS_PER_SOURCE = 3
 
 
 def _safe(task_id: str) -> str:
@@ -118,26 +125,39 @@ def build_all(
 
         shutil.rmtree(root)
     stats = BuildStats()
-    task_hashes: dict[str, str] = {}
     hs_shortfalls: list[dict] = []
 
+    # Phase 1: build candidate tasks from every source (up to
+    # MAX_MUTANTS_PER_SOURCE each) WITHOUT writing to disk.
+    candidates: list[Task] = []
     for i, src in enumerate(sources):
-        tasks, reason = build_task(src, sb, cache, build_seed=BUILD_SEED)
+        tasks, reason = build_task(
+            src, sb, cache, build_seed=BUILD_SEED, max_mutants=MAX_MUTANTS_PER_SOURCE
+        )
         if not tasks:
             stats.skipped.append({"task_id": src.task_id, "reason": reason})
             continue
-        for t in tasks:
-            save_task(t, root)
-            task_hashes[t.task_id] = t.content_hash
-            stats.built += 1
-            op = t.mutation.operator if t.mutation else "none"
-            diff = t.mutation.difficulty.value if t.mutation else "none"
-            stats.operator_counts[op] = stats.operator_counts.get(op, 0) + 1
-            stats.difficulty_counts[diff] = stats.difficulty_counts.get(diff, 0) + 1
-            if len(t.hs) < HS_TARGET:
-                hs_shortfalls.append({"task_id": t.task_id, "hs": len(t.hs)})
+        candidates.extend(tasks)
         if (i + 1) % 50 == 0:
-            print(f"  built {stats.built} tasks from {i + 1}/{len(sources)} sources")
+            print(
+                f"  built candidates from {i + 1}/{len(sources)} sources ({len(candidates)} cands)"
+            )
+
+    # Phase 2: deterministic quota selection over the candidate pool.
+    selected = select_by_quota(candidates, build_seed=BUILD_SEED)
+
+    # Phase 3: write the selected set and build the manifest.
+    task_hashes: dict[str, str] = {}
+    for t in selected:
+        save_task(t, root)
+        task_hashes[t.task_id] = t.content_hash
+        stats.built += 1
+        op = t.mutation.operator if t.mutation else "none"
+        diff = t.mutation.difficulty.value if t.mutation else "none"
+        stats.operator_counts[op] = stats.operator_counts.get(op, 0) + 1
+        stats.difficulty_counts[diff] = stats.difficulty_counts.get(diff, 0) + 1
+        if len(t.hs) < HS_TARGET:
+            hs_shortfalls.append({"task_id": t.task_id, "hs": len(t.hs)})
 
     manifest = {
         "build_seed": BUILD_SEED,
@@ -145,6 +165,11 @@ def build_all(
         "counts": _counts(task_hashes),
         "operator_counts": dict(sorted(stats.operator_counts.items())),
         "difficulty_counts": dict(sorted(stats.difficulty_counts.items())),
+        "quotas": {
+            "operator_cap_frac": OPERATOR_CAP_FRAC,
+            "min_medium_subtle_frac": MIN_MEDIUM_SUBTLE_FRAC,
+            "max_mutants_per_source": MAX_MUTANTS_PER_SOURCE,
+        },
         "skipped": stats.skipped,
         "hs_shortfalls": hs_shortfalls,
         "task_hashes": dict(sorted(task_hashes.items())),
@@ -153,6 +178,119 @@ def build_all(
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     return manifest, stats
+
+
+def select_by_quota(candidates: list[Task], build_seed: int = BUILD_SEED) -> list[Task]:
+    """Select a deterministic, quota-compliant subset of candidate tasks.
+
+    Rules (review R6 / D-005):
+      - No single operator may exceed OPERATOR_CAP_FRAC of the selected set.
+      - At least MIN_MEDIUM_SUBTLE_FRAC of the selected set must be medium+subtle.
+
+    Strategy: shuffle candidates deterministically, then greedily accept a task if
+    adding it keeps every operator under the cap *and* does not overshoot the total
+    that the cap implies. To satisfy the difficulty floor we do a two-pass fill:
+    first pass accepts medium+subtle up to a target, then blatant to fill. Because
+    the cap depends on the final total, we compute the maximum feasible total from
+    the largest per-operator supply and select toward it.
+
+    The function is pure and deterministic given the seed, so the manifest hash is
+    stable across rebuilds (INV-6).
+    """
+    if not candidates:
+        return []
+
+    rng = random.Random(build_seed)
+
+    def shuffle(items: list[Task]) -> list[Task]:
+        out = list(items)
+        rng.shuffle(out)
+        return out
+
+    def diff_of(t: Task) -> str:
+        return t.mutation.difficulty.value if t.mutation else "blatant"
+
+    by_diff = {"subtle": [], "medium": [], "blatant": []}
+    for t in candidates:
+        by_diff.setdefault(diff_of(t), []).append(t)
+    for k in by_diff:
+        by_diff[k] = shuffle(by_diff[k])
+
+    # Maximum feasible total under the per-operator cap: for a total N, each
+    # operator may contribute at most cap*N, so the achievable count is
+    # sum_i min(supply_i, cap*N). Find the largest N with that >= N.
+    op_supply: dict[str, int] = {}
+    for t in candidates:
+        op = t.mutation.operator if t.mutation else "none"
+        op_supply[op] = op_supply.get(op, 0) + 1
+    supplies = list(op_supply.values())
+
+    def feasible_total(n: int) -> bool:
+        allowed = sum(min(s, OPERATOR_CAP_FRAC * n) for s in supplies)
+        return allowed + 1e-9 >= n
+
+    lo, hi = 0, len(candidates)
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if feasible_total(mid):
+            lo = mid
+        else:
+            hi = mid - 1
+    target_total = lo
+    # The cap is a target, not a hard invariant. If it is mathematically
+    # infeasible (e.g. the pool is dominated by one operator so even one task
+    # would exceed the cap), fall back to a best-effort non-empty selection so a
+    # build is never silently emptied. In practice 13 operators make it feasible.
+    relaxed_cap = OPERATOR_CAP_FRAC
+    if target_total == 0 and candidates:
+        target_total = min(len(candidates), max(1, len(op_supply)))
+        relaxed_cap = 1.0
+
+    # Difficulty floor: aim for at least MIN_MEDIUM_SUBTLE_FRAC medium+subtle.
+    ms_target = int(target_total * MIN_MEDIUM_SUBTLE_FRAC)
+
+    op_counts: dict[str, int] = {}
+    chosen: list[Task] = []
+    chosen_ids: set[str] = set()
+
+    def op_of(t: Task) -> str:
+        return t.mutation.operator if t.mutation else "none"
+
+    def under_cap(t: Task) -> bool:
+        op = op_of(t)
+        # Enforce the cap against the planned final size, not the running count
+        # (the running count is too small early on for any fraction to hold).
+        projected_op = op_counts.get(op, 0) + 1
+        return projected_op <= relaxed_cap * target_total + 1e-9
+
+    # Pass 1: fill medium+subtle up to ms_target.
+    for bucket in ("subtle", "medium"):
+        for t in by_diff.get(bucket, []):
+            if len(chosen) >= target_total:
+                break
+            ms_so_far = sum(1 for c in chosen if diff_of(c) in ("subtle", "medium"))
+            if ms_so_far >= ms_target:
+                break
+            if t.task_id in chosen_ids or not under_cap(t):
+                continue
+            chosen.append(t)
+            chosen_ids.add(t.task_id)
+            op_counts[op_of(t)] = op_counts.get(op_of(t), 0) + 1
+
+    # Pass 2: fill remaining slots (prefer blatant, then anything) under the cap.
+    fill_order = by_diff.get("blatant", []) + by_diff.get("medium", []) + by_diff.get("subtle", [])
+    for t in fill_order:
+        if len(chosen) >= target_total:
+            break
+        if t.task_id in chosen_ids or not under_cap(t):
+            continue
+        chosen.append(t)
+        chosen_ids.add(t.task_id)
+        op_counts[op_of(t)] = op_counts.get(op_of(t), 0) + 1
+
+    # Sort the chosen set by task_id for a stable, reproducible on-disk order.
+    chosen.sort(key=lambda t: t.task_id)
+    return chosen
 
 
 def _counts(task_hashes: dict[str, str]) -> dict[str, int]:
