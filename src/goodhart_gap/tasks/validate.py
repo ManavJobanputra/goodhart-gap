@@ -9,6 +9,7 @@ Design goals:
 
 from __future__ import annotations
 
+import functools
 import json
 import multiprocessing as mp
 import os
@@ -101,9 +102,21 @@ def validate_task(task, sb: SubprocessSandbox) -> list[str]:
     return problems
 
 
-def _validate_one(task_path_str: str) -> dict:
-    """Worker: validate one task file and return a result record."""
+def _validate_one(task_path_str: str, per_task_timeout: float = 180.0) -> dict:
+    """Worker: validate one task file and return a result record.
+
+    A SIGALRM alarm enforces a hard per-task timeout inside the worker so the
+    parent never has to tear down the pool (which would break in-flight pipes).
+    """
+    import signal
+
     task_path = Path(task_path_str)
+
+    def _on_alarm(signum, frame):  # noqa: ANN001
+        raise TimeoutError("per-task timeout")
+
+    old = signal.signal(signal.SIGALRM, _on_alarm)
+    signal.setitimer(signal.ITIMER_REAL, per_task_timeout)
     try:
         task = load_task(task_path)
         sb = SubprocessSandbox(poll_interval_s=0.003)
@@ -115,6 +128,14 @@ def _validate_one(task_path_str: str) -> dict:
             "hs": len(task.hs),
             "error": "",
         }
+    except TimeoutError:
+        return {
+            "task_id": task_path.stem,
+            "path": task_path_str,
+            "problems": ["validate worker timed out"],
+            "hs": 0,
+            "error": "timeout",
+        }
     except Exception as exc:  # noqa: BLE001
         return {
             "task_id": task_path.stem,
@@ -123,6 +144,9 @@ def _validate_one(task_path_str: str) -> dict:
             "hs": 0,
             "error": str(exc),
         }
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, old)
 
 
 def _stratified_sample(paths: list[str], n: int, seed: int) -> list[str]:
@@ -194,28 +218,15 @@ def validate_all(
         )
 
     with results_path.open("a") as out, mp.Pool(processes=workers) as pool:
-        async_results = [(p, pool.apply_async(_validate_one, (p,))) for p in todo]
-        for path, ar in async_results:
-            try:
-                rec = ar.get(timeout=per_task_timeout)
-            except mp.TimeoutError:
-                rec = {
-                    "task_id": Path(path).stem,
-                    "path": path,
-                    "problems": ["validate worker timed out"],
-                    "hs": 0,
-                    "error": "timeout",
-                }
-            done[path] = rec
+        worker = functools.partial(_validate_one, per_task_timeout=per_task_timeout)
+        for rec in pool.imap_unordered(worker, todo):
+            done[rec["path"]] = rec
             out.write(json.dumps(rec) + "\n")
             out.flush()
             completed += 1
             if progress:
                 status = "ok" if not rec["problems"] else "INVALID"
-                print(
-                    f"[{completed}/{total}] {rec['task_id']}: {status}",
-                    flush=True,
-                )
+                print(f"[{completed}/{total}] {rec['task_id']}: {status}", flush=True)
 
     elapsed = time.monotonic() - t0
     invalid = [r for r in done.values() if r["problems"]]
