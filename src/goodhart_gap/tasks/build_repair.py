@@ -22,8 +22,7 @@ import random
 from dataclasses import dataclass, field
 from typing import Any
 
-from goodhart_gap.sandbox.base import CaseInput
-from goodhart_gap.sandbox.subprocess_sandbox import SubprocessSandbox
+from goodhart_gap.sandbox.base import CaseInput, Sandbox
 from goodhart_gap.schema import SourceTask, Task, TestCase
 from goodhart_gap.tasks.expected import ExpectedCache, compute_cases
 from goodhart_gap.tasks.fuzz import generate_fuzz_inputs
@@ -51,13 +50,24 @@ def _task_seed(build_seed: int, task_id: str) -> int:
 
 
 def _run_code(
-    sb: SubprocessSandbox, code: str, entry: str, inputs: list[list[Any]], timeout_s: float = 15.0
+    sb: Sandbox,
+    code: str,
+    entry: str,
+    inputs: list[list[Any]],
+    timeout_s: float = 15.0,
+    replica: int = 0,
 ):
-    return sb.run_cases(code, entry, [CaseInput(args=list(a)) for a in inputs], timeout_s=timeout_s)
+    return sb.run_cases(
+        code,
+        entry,
+        [CaseInput(args=list(a)) for a in inputs],
+        timeout_s=timeout_s,
+        replica=replica,
+    )
 
 
 def _fails_any(
-    sb: SubprocessSandbox,
+    sb: Sandbox,
     code: str,
     entry: str,
     cases: list[TestCase],
@@ -78,7 +88,7 @@ def _fails_any(
 
 def build_task(
     src: SourceTask,
-    sb: SubprocessSandbox,
+    sb: Sandbox,
     cache: ExpectedCache,
     build_seed: int = 1729,
     max_mutants: int = 2,
@@ -209,7 +219,7 @@ def build_task(
 
 
 def _failing_indices(
-    sb: SubprocessSandbox, code: str, entry: str, cases: list[TestCase], atol: float
+    sb: Sandbox, code: str, entry: str, cases: list[TestCase], atol: float
 ) -> set[int]:
     res = _run_code(sb, code, entry, [c.args for c in cases])
     if res.setup_error:
@@ -221,11 +231,9 @@ def _failing_indices(
     return fails
 
 
-def _deterministic(
-    sb: SubprocessSandbox, code: str, entry: str, cases: list[TestCase], atol: float
-) -> bool:
-    a = _run_code(sb, code, entry, [c.args for c in cases[:30]])
-    b = _run_code(sb, code, entry, [c.args for c in cases[:30]])
+def _deterministic(sb: Sandbox, code: str, entry: str, cases: list[TestCase], atol: float) -> bool:
+    a = _run_code(sb, code, entry, [c.args for c in cases[:30]], replica=0)
+    b = _run_code(sb, code, entry, [c.args for c in cases[:30]], replica=1)
     if a.setup_error or b.setup_error:
         return False
     if len(a.outputs) != len(b.outputs):
@@ -238,10 +246,14 @@ def _deterministic(
     return True
 
 
-def _stabilise_hs(sb: SubprocessSandbox, src: SourceTask, cases: list[TestCase]) -> list[TestCase]:
+def _stabilise_hs(sb: Sandbox, src: SourceTask, cases: list[TestCase]) -> list[TestCase]:
     """Keep HS cases whose canonical output is identical across two runs."""
-    res1 = _run_code(sb, src.canonical_solution, src.entry_point, [c.args for c in cases])
-    res2 = _run_code(sb, src.canonical_solution, src.entry_point, [c.args for c in cases])
+    res1 = _run_code(
+        sb, src.canonical_solution, src.entry_point, [c.args for c in cases], replica=0
+    )
+    res2 = _run_code(
+        sb, src.canonical_solution, src.entry_point, [c.args for c in cases], replica=1
+    )
     if res1.setup_error or res2.setup_error:
         return cases
     stable: list[TestCase] = []

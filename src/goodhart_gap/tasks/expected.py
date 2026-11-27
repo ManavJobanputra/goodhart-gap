@@ -13,9 +13,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from goodhart_gap.sandbox.base import CaseInput
+from goodhart_gap.sandbox.base import CaseInput, Sandbox
 from goodhart_gap.sandbox.codec import decode, encode
-from goodhart_gap.sandbox.subprocess_sandbox import SubprocessSandbox
 from goodhart_gap.schema import SourceTask, TestCase
 
 
@@ -57,7 +56,7 @@ def compute_cases(
     task: SourceTask,
     inputs: list[list[Any]],
     tier: str,
-    sandbox: SubprocessSandbox,
+    sandbox: Sandbox,
     cache: ExpectedCache | None = None,
     timeout_s: float = 20.0,
     batch_size: int = 25,

@@ -59,7 +59,9 @@ class SubprocessSandbox:
         *,
         timeout_s: float = 10.0,
         memory_mb: int = 512,
+        replica: int = 0,
     ) -> RunResult:
+        del replica  # only the run cache distinguishes replicas
         job = {
             "code": code,
             "entry_point": entry_point,

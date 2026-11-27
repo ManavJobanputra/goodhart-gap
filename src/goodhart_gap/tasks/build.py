@@ -18,6 +18,7 @@ import warnings
 from pathlib import Path
 
 from goodhart_gap.sandbox.codec import decode, encode
+from goodhart_gap.sandbox.run_cache import CachedSandbox, RunCache
 from goodhart_gap.sandbox.subprocess_sandbox import SubprocessSandbox
 from goodhart_gap.schema import Family, Task, TestCase
 from goodhart_gap.tasks.build_repair import HS_TARGET, BuildStats, build_task
@@ -29,6 +30,7 @@ warnings.filterwarnings("ignore", category=SyntaxWarning)
 BUILT_DIR = Path("data/built/tasks")
 MANIFEST_PATH = Path("data/manifest.lock.json")
 CACHE_DIR = Path("data/built/expected_cache")
+RUN_CACHE_DIR = Path("data/built/run_cache")
 BUILD_SEED = 1729
 
 
@@ -104,7 +106,10 @@ def build_all(
     if limit is not None:
         sources = sources[:limit]
 
-    sb = SubprocessSandbox(poll_interval_s=0.003)
+    sb = CachedSandbox(
+        SubprocessSandbox(poll_interval_s=0.003),
+        RunCache(RUN_CACHE_DIR),
+    )
     cache = ExpectedCache(CACHE_DIR)
     stats = BuildStats()
     task_hashes: dict[str, str] = {}

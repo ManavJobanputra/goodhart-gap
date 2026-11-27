@@ -36,7 +36,9 @@ class DockerSandbox:
         *,
         timeout_s: float = 10.0,
         memory_mb: int = 512,
+        replica: int = 0,
     ) -> RunResult:
+        del replica
         raise NotImplementedError(
             "DockerSandbox is an optional, unimplemented backend. Use "
             "SubprocessSandbox (the default). See BLOCKERS.md B-001."
