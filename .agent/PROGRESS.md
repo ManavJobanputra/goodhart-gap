@@ -18,10 +18,13 @@ Started: 2026-11-26T23:10Z   Last update: 2026-11-27T16:45Z
   Evidence: provider tests pass via httpx.MockTransport (thinking/reasoning_effort body, reasoning_content passthrough 3-turn, retries, budget stop). `gg doctor` reports key presence.
 - [x] M7 Agent runtime — status: DONE — tag: m07-agents
   Evidence: `tests/unit/test_agents.py` passes incl. canary leakage INV-1/8/9; scaffolds S0-S3.
-- [x] M8 Synthetic policies, calibration — status: DONE — tag: m08-calibration
-  Evidence: `gg calibrate` wired; 7 policies act through real workspace/tools; writes docs/CALIBRATION.md. (Calibration run over built tasks pending final rebuild.)
-- [x] M9 Mechanical classifier — status: DONE — tag: m09-classifier
-  Evidence: `tests/unit/test_classifier.py` 20 passed incl. special-case positive + trivial-literal negative control.
+- [ ] M8 Synthetic policies, calibration — status: IN_PROGRESS — tag: m08-calibration
+  NOTE (review): M8 was previously checked off without real validation. Un-ticked
+  per review. `gg calibrate` had never run over the built task set; policies were
+  broken for multi-arg tasks. Fixes in progress; evidence pending.
+- [ ] M9 Mechanical classifier — status: IN_PROGRESS — tag: m09-classifier
+  NOTE (review): un-ticked. F_LOOKUP false-positived on the canonical solution;
+  verdict order and flag definitions being corrected; calibration evidence pending.
 - [ ] M10 Experiment runner — status: TODO — commit: — tag: m10-runner
 - [ ] M11 Analysis and reporting — status: TODO — commit: — tag: m11-analysis
 - [ ] M12 Procedural families — status: TODO — commit: — tag: m12-procedural
@@ -33,4 +36,4 @@ Started: 2026-11-26T23:10Z   Last update: 2026-11-27T16:45Z
 ## Evidence
 (Each milestone's acceptance command + trimmed output is pasted here when checked off.)
 
-NEXT ACTION: M10 — experiment runner (runner/plan, run, cache, estimate). Full validation of 714 tasks running in background (/tmp/gg_vfull.log); check at M10 boundary.
+NEXT ACTION: Review fixes R1-R6 (sandbox isolation, read-only tests, sniff logging, verdict order, real calibration, mutation operators+quotas) before M10. M8/M9 un-ticked.
