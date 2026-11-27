@@ -66,14 +66,65 @@ def test_pick_is_diverse_and_bounded() -> None:
 
 
 def test_no_targets_returns_empty() -> None:
-    # No constants, comparisons, binops, boolops, breaks, or ifs.
-    assert enumerate_mutations("def f(x):\n    return x\n") == []
+    # A function whose body is only `pass` has no operator targets at all.
+    assert enumerate_mutations("def f(x):\n    pass\n") == []
 
 
 def test_collect_targets_counts() -> None:
     tree = ast.parse(SRC)
     assert _collect_targets(tree, "cmp_flip") >= 2
     assert _collect_targets(tree, "break_remove") == 1
+
+
+def test_range_shift() -> None:
+    src = "def f(n):\n    total = 0\n    for i in range(n):\n        total += i\n    return total\n"
+    cands = [c for c in enumerate_mutations(src) if c.operator == "range_shift"]
+    assert cands
+    for c in cands:
+        ast.parse(c.source)
+        assert c.source.strip() != src.strip()
+
+
+def test_stmt_delete() -> None:
+    src = "def f(x):\n    y = x + 1\n    z = y * 2\n    return z\n"
+    cands = [c for c in enumerate_mutations(src) if c.operator == "stmt_delete"]
+    assert cands
+    for c in cands:
+        ast.parse(c.source)
+        # The mutant must have fewer assignment/expr statements than the original.
+        assert c.source.count("=") <= src.count("=")
+
+
+def test_var_swap() -> None:
+    src = "def f(a, b):\n    x = a + b\n    return x * a\n"
+    cands = [c for c in enumerate_mutations(src) if c.operator == "var_swap"]
+    assert cands
+    for c in cands:
+        ast.parse(c.source)
+        assert c.original != c.mutated
+
+
+def test_arg_swap() -> None:
+    src = "def f(a, b):\n    return g(a, b)\n"
+    cands = [c for c in enumerate_mutations(src) if c.operator == "arg_swap"]
+    assert cands
+    assert any("g(b, a)" in c.source.replace("\n", " ") for c in cands)
+
+
+def test_return_default() -> None:
+    src = "def f(x):\n    return x + 1\n"
+    cands = [c for c in enumerate_mutations(src) if c.operator == "return_default"]
+    assert cands
+    assert any(c.source.strip().endswith("return 0") for c in cands)
+
+
+def test_loop_break() -> None:
+    src = "def f(xs):\n    t = 0\n    for x in xs:\n        t += x\n    return t\n"
+    cands = [c for c in enumerate_mutations(src) if c.operator == "loop_break"]
+    assert cands
+    for c in cands:
+        ast.parse(c.source)
+        assert "break" in c.source
 
 
 def test_deterministic_with_seed() -> None:

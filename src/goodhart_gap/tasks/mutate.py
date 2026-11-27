@@ -166,6 +166,84 @@ class _Mutator(ast.NodeTransformer):
                     self.mutated = "index+1"
                     self.applied = True
                     return node
+        if self.target_kind == "range_shift":
+            # Slice upper bound: x[a:b] -> x[a:b+1] when b is a constant int.
+            sl = node.slice
+            if (
+                isinstance(sl, ast.Slice)
+                and isinstance(sl.upper, ast.Constant)
+                and isinstance(sl.upper.value, int)
+                and not isinstance(sl.upper.value, bool)
+            ):
+                if self._maybe(node):
+                    sl.upper.value = sl.upper.value + 1
+                    self.original = "slice bound"
+                    self.mutated = "slice bound+1"
+                    self.applied = True
+                    return node
+        return self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> ast.AST:
+        if self.target_kind == "range_shift":
+            # range boundary: shift the last argument.
+            if isinstance(node.func, ast.Name) and node.func.id == "range" and node.args:
+                if self._maybe(node):
+                    last = node.args[-1]
+                    if (
+                        isinstance(last, ast.Constant)
+                        and isinstance(last.value, int)
+                        and not isinstance(last.value, bool)
+                    ):
+                        last.value = last.value + 1
+                        self.original = "range bound"
+                        self.mutated = "range bound+1"
+                    else:
+                        # Non-constant single/multi arg: wrap as (arg - 1).
+                        node.args[-1] = ast.BinOp(
+                            left=last, op=ast.Sub(), right=ast.Constant(value=1)
+                        )
+                        self.original = "range bound"
+                        self.mutated = "range bound-1"
+                    self.applied = True
+                    return node
+        if self.target_kind == "arg_swap":
+            # Argument swap: f(a, b) -> f(b, a) for calls with >= 2 positional args.
+            if len(node.args) >= 2 and self._maybe(node):
+                node.args[0], node.args[1] = node.args[1], node.args[0]
+                self.original = "arg order"
+                self.mutated = "args swapped"
+                self.applied = True
+                return node
+        return self.generic_visit(node)
+
+    def visit_Return(self, node: ast.Return) -> ast.AST:
+        if self.target_kind == "return_default":
+            if node.value is not None and self._maybe(node):
+                node.value = ast.Constant(value=0)
+                self.original = "return expr"
+                self.mutated = "return 0"
+                self.applied = True
+                return node
+        return self.generic_visit(node)
+
+    def visit_For(self, node: ast.For) -> ast.AST:
+        if self.target_kind == "loop_break":
+            if self._maybe(node):
+                node.body.insert(0, ast.Break())
+                self.original = "for"
+                self.mutated = "for + early break"
+                self.applied = True
+                return node
+        return self.generic_visit(node)
+
+    def visit_While(self, node: ast.While) -> ast.AST:
+        if self.target_kind == "loop_break":
+            if self._maybe(node):
+                node.body.insert(0, ast.Break())
+                self.original = "while"
+                self.mutated = "while + early break"
+                self.applied = True
+                return node
         return self.generic_visit(node)
 
 
@@ -195,7 +273,98 @@ def _collect_targets(tree: ast.AST, kind: str) -> int:
         elif kind == "index_shift" and isinstance(node, ast.Subscript):
             if isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, int):
                 count += 1
+        elif kind == "range_shift":
+            if isinstance(node, ast.Slice) and isinstance(node.upper, ast.Constant):
+                if isinstance(node.upper.value, int) and not isinstance(node.upper.value, bool):
+                    count += 1
+            elif (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "range"
+                and node.args
+            ):
+                count += 1
+        elif kind == "arg_swap" and isinstance(node, ast.Call):
+            if len(node.args) >= 2:
+                count += 1
+        elif kind == "return_default" and isinstance(node, ast.Return):
+            if node.value is not None:
+                count += 1
+        elif kind == "loop_break" and isinstance(node, (ast.For, ast.While)):
+            count += 1
+        elif kind == "stmt_delete" and isinstance(node, ast.stmt):
+            # Deletable statements inside a function/loop/if body (not the
+            # function def itself, not a bare return of the whole body).
+            if isinstance(node, (ast.Assign, ast.AugAssign, ast.Expr, ast.If, ast.For, ast.While)):
+                count += 1
+        elif kind == "var_swap" and isinstance(node, ast.Name):
+            if isinstance(node.ctx, ast.Load):
+                count += 1
     return count
+
+
+def _delete_nth_stmt(tree: ast.AST, index: int) -> tuple[ast.AST, str, str] | None:
+    """Delete the index-th deletable statement in a body. Returns (tree, orig, mut)."""
+    deletable = (ast.Assign, ast.AugAssign, ast.Expr, ast.If, ast.For, ast.While)
+    found: list[tuple[list, int, ast.stmt]] = []
+
+    def walk(node: ast.AST) -> None:
+        for _field, value in ast.iter_fields(node):
+            if isinstance(value, list) and value and all(isinstance(v, ast.stmt) for v in value):
+                for i, stmt in enumerate(value):
+                    if isinstance(stmt, deletable):
+                        found.append((value, i, stmt))
+            if isinstance(value, ast.AST):
+                walk(value)
+            elif isinstance(value, list):
+                for v in value:
+                    if isinstance(v, ast.AST):
+                        walk(v)
+
+    walk(tree)
+    for seen, (container, i, stmt) in enumerate(found):
+        if seen == index:
+            # Do not delete if it is the only statement in the body (would make
+            # an empty body invalid); replace with pass instead.
+            orig = type(stmt).__name__
+            if len(container) == 1:
+                container[0] = ast.Pass()
+                return tree, orig, "pass"
+            del container[i]
+            return tree, orig, "deleted"
+    return None
+
+
+def _swap_nth_var(tree: ast.AST, index: int, names: list[str]) -> tuple[ast.AST, str, str] | None:
+    """Replace the index-th loaded Name with a different in-scope variable name."""
+    seen = 0
+    target: ast.Name | None = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+            if seen == index:
+                target = node
+                break
+            seen += 1
+    if target is None:
+        return None
+    orig = target.id
+    # Pick a different variable name that actually appears in the source.
+    alternatives = [n for n in names if n != orig]
+    if not alternatives:
+        return None
+    target.id = alternatives[0]
+    return tree, orig, alternatives[0]
+
+
+def _all_names(tree: ast.AST) -> list[str]:
+    """Collect identifier names (params + assignments + loaded names), sorted."""
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            names.add(node.id)
+        elif isinstance(node, ast.arg):
+            names.add(node.arg)
+    return sorted(names)
 
 
 def _apply_operator(source: str, kind: str, index: int) -> MutationCandidate | None:
@@ -203,6 +372,33 @@ def _apply_operator(source: str, kind: str, index: int) -> MutationCandidate | N
         tree = ast.parse(source)
     except SyntaxError:
         return None
+
+    if kind in ("stmt_delete", "var_swap"):
+        work = copy.deepcopy(tree)
+        if kind == "stmt_delete":
+            res = _delete_nth_stmt(work, index)
+        else:
+            res = _swap_nth_var(work, index, _all_names(tree))
+        if res is None:
+            return None
+        new_tree, original, mutated = res
+        try:
+            new_source = ast.unparse(new_tree)
+        except Exception:  # noqa: BLE001
+            return None
+        try:
+            ast.parse(new_source)
+        except SyntaxError:
+            return None
+        return MutationCandidate(
+            source=new_source,
+            operator=kind,
+            node_type=kind,
+            lineno=None,
+            original=original,
+            mutated=mutated,
+        )
+
     mut = _Mutator(kind, index)
     new_tree = mut.visit(copy.deepcopy(tree))
     if not mut.applied:
@@ -233,6 +429,12 @@ OPERATORS = [
     "cond_negate",
     "break_remove",
     "index_shift",
+    "range_shift",
+    "stmt_delete",
+    "var_swap",
+    "arg_swap",
+    "return_default",
+    "loop_break",
 ]
 
 
