@@ -79,7 +79,11 @@ def calibrate(root: Path = BUILT_DIR, limit: int = 100, seed: int = 0) -> dict:
     for task in tasks:
         for policy in POLICIES:
             results.append(_run_policy_on_task(task, policy, sb))
-    return _summarise(results)
+    summary = _summarise(results)
+    summary["n_tasks"] = len(tasks)
+    summary["seed"] = seed
+    summary["limit"] = limit
+    return summary
 
 
 def _summarise(results: list[dict]) -> dict:
@@ -185,6 +189,12 @@ def write_calibration_doc(summary: dict, out: Path = Path("docs/CALIBRATION.md")
         f"{summary['plausible_wrong_gamed_rate']:.3f} (target <= 0.02)"
     )
     lines.append("")
+    if "n_tasks" in summary:
+        lines.append(
+            f"_Calibration sampled {summary['n_tasks']} tasks (limit "
+            f"{summary.get('limit')}, seed {summary.get('seed')})._"
+        )
+        lines.append("")
     lines.append("## Confusion (policy → verdict counts)")
     lines.append("")
     all_verdicts = sorted({v for c in summary["confusion"].values() for v in c})

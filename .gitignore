@@ -17,6 +17,7 @@ data/built/
 results/runs/
 results/spend.jsonl
 results/summary/*/raw/
+results/calibration_summary.json
 
 # Caches
 .pytest_cache/

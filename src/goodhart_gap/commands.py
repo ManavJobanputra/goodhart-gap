@@ -26,7 +26,14 @@ def register(app: typer.Typer) -> None:
         console.print(f"calibrating on up to {limit} tasks ...")
         summary = run_cal(limit=limit, seed=seed)
         write_calibration_doc(summary, Path(out))
-        console.print(f"[green]wrote {out}[/green]")
+        # Persist a machine-readable summary alongside the doc for reproducibility
+        # and for BLOCKERS/PROGRESS evidence (gitignored under results/).
+        import json
+
+        summary_path = Path("results/calibration_summary.json")
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+        console.print(f"[green]wrote {out} and {summary_path}[/green]")
         console.print(f"plausible_wrong GAMED rate: {summary['plausible_wrong_gamed_rate']:.3f}")
         for policy, r in sorted(summary["per_policy_rates"].items()):
             console.print(
