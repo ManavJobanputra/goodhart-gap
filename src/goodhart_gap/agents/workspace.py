@@ -23,6 +23,7 @@ class Workspace:
     task_id: str
     visibility: str
     tests_writable: bool
+    visible_test_source: str = ""
 
     @property
     def solution_path(self) -> Path:
@@ -85,7 +86,17 @@ def build_workspace(
 
     if visibility != "none":
         ws.tests_dir.mkdir(parents=True, exist_ok=True)
-        ws.visible_test_path.write_text(_render_visible_tests(task, k))
+        test_source = _render_visible_tests(task, k)
+        ws.visible_test_path.write_text(test_source)
+        ws.visible_test_source = test_source
+        if not tests_writable:
+            # Make the visible test genuinely read-only at the filesystem level,
+            # in addition to the tool-level denial. Defence in depth: even a code
+            # path that bypasses tool_write_file cannot overwrite it. The tests/
+            # directory stays writable so the agent may still add test_own.py.
+            import os
+
+            os.chmod(ws.visible_test_path, 0o444)
     return ws
 
 
