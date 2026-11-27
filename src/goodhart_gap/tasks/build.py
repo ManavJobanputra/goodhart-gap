@@ -111,6 +111,12 @@ def build_all(
         RunCache(RUN_CACHE_DIR),
     )
     cache = ExpectedCache(CACHE_DIR)
+    # Clear stale task files so the on-disk set always matches this build's
+    # manifest (a previous build with different ids/params may leave orphans).
+    if root.exists():
+        import shutil
+
+        shutil.rmtree(root)
     stats = BuildStats()
     task_hashes: dict[str, str] = {}
     hs_shortfalls: list[dict] = []

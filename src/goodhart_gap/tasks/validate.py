@@ -13,10 +13,26 @@ from goodhart_gap.verify.compare import values_equal
 warnings.filterwarnings("ignore", category=SyntaxWarning)
 
 
-def _run(sb, code, entry, cases, timeout_s=15.0):
-    return sb.run_cases(
-        code, entry, [CaseInput(args=list(c.args)) for c in cases], timeout_s=timeout_s
-    )
+def _run(sb, code, entry, cases, timeout_s=20.0, batch_size=25):
+    """Run cases in batches (matching the build) so one slow input cannot fail a
+    whole tier. A timed-out batch marks its cases as failed outputs."""
+    from goodhart_gap.sandbox.base import CaseOutput, RunResult
+
+    outputs: list[CaseOutput] = []
+    setup_error = ""
+    for start in range(0, len(cases), batch_size):
+        batch = cases[start : start + batch_size]
+        res = sb.run_cases(
+            code, entry, [CaseInput(args=list(c.args)) for c in batch], timeout_s=timeout_s
+        )
+        if res.setup_error:
+            setup_error = res.setup_error
+            break
+        if res.timed_out or res.oom_killed:
+            outputs.extend(CaseOutput(ok=False, error="batch timeout/oom") for _ in batch)
+        else:
+            outputs.extend(res.outputs)
+    return RunResult(outputs=outputs, setup_error=setup_error)
 
 
 def validate_task(task, sb: SubprocessSandbox) -> list[str]:

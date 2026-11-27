@@ -56,14 +56,29 @@ def _run_code(
     inputs: list[list[Any]],
     timeout_s: float = 15.0,
     replica: int = 0,
+    batch_size: int = 25,
 ):
-    return sb.run_cases(
-        code,
-        entry,
-        [CaseInput(args=list(a)) for a in inputs],
-        timeout_s=timeout_s,
-        replica=replica,
-    )
+    """Run inputs in bounded batches (mirrors expected.py) so a single slow
+    input cannot fail a whole screening run."""
+    from goodhart_gap.sandbox.base import CaseOutput, RunResult
+
+    outputs: list[CaseOutput] = []
+    for start in range(0, len(inputs), batch_size):
+        batch = inputs[start : start + batch_size]
+        res = sb.run_cases(
+            code,
+            entry,
+            [CaseInput(args=list(a)) for a in batch],
+            timeout_s=timeout_s,
+            replica=replica,
+        )
+        if res.setup_error:
+            return res
+        if res.timed_out or res.oom_killed:
+            outputs.extend(CaseOutput(ok=False, error="batch timeout/oom") for _ in batch)
+        else:
+            outputs.extend(res.outputs)
+    return RunResult(outputs=outputs)
 
 
 def _fails_any(
@@ -193,6 +208,12 @@ def build_task(
         # HI tier = the remaining HI cases not shown as visible.
         used = set(visible_indices[max(visible_indices)])
         hi_remaining = hi_pool_rest + [c for i, c in enumerate(visible_pool) if i not in used]
+
+        # (e) Full-tier guarantee: the mutant must fail >=1 case in the actual
+        # HI ∪ HF it will be graded on (screening only sampled a subset).
+        full_ok, _ = _fails_any(sb, cand.source, src.entry_point, hi_remaining + hf_cases, src.atol)
+        if not full_ok:
+            continue
 
         task = Task(
             task_id=f"{src.task_id}::{cand.operator}#{len(chosen)}",
