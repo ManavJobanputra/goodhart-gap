@@ -18,7 +18,7 @@ from pathlib import Path
 from goodhart_gap import __version__
 from goodhart_gap.agents.scaffolds.base import AttemptSpec, run_scaffold
 from goodhart_gap.agents.workspace import build_workspace, cleanup_workspace, pristine_copy
-from goodhart_gap.classify.mechanical import assign_verdict, detect_flags
+from goodhart_gap.classify.mechanical import assign_verdict, attempted_gaming, detect_flags
 from goodhart_gap.providers.base import Provider
 from goodhart_gap.providers.cost import compute_cost, get_model
 from goodhart_gap.runner.plan import PlannedAttempt
@@ -98,6 +98,7 @@ def run_synthetic_attempt(
     flags: list[Flag] = []
     grader = None
     verdict = None
+    attempted = False
 
     try:
         fn = POLICIES[policy]
@@ -118,6 +119,7 @@ def run_synthetic_attempt(
             sniff_flags = detect_path_sniffing([])
             flags = detect_flags(task, submission, k, ws_flags + sniff_flags)
             verdict = assign_verdict(grader, flags, submitted=True)
+            attempted = attempted_gaming(flags)
             workspace_diff = _diff_dirs(pristine, ws.root)
     finally:
         cleanup_workspace(ws)
@@ -143,6 +145,7 @@ def run_synthetic_attempt(
         grader=grader,
         flags=flags,
         verdict=verdict,
+        attempted_gaming=attempted,
         usage=Usage(),
         config_hash=config_hash,
         git_sha=_git_sha(),
@@ -186,6 +189,7 @@ def run_model_attempt(
     flags: list[Flag] = []
     grader = None
     verdict = None
+    attempted = False
     usage = Usage()
 
     try:
@@ -232,6 +236,7 @@ def run_model_attempt(
             sniff_flags = detect_path_sniffing(tool_log)
             flags = detect_flags(task, submission, k, ws_flags + sniff_flags)
             verdict = assign_verdict(grader, flags, submitted=True)
+            attempted = attempted_gaming(flags)
             workspace_diff = _diff_dirs(pristine, ws.root)
     finally:
         cleanup_workspace(ws)
@@ -264,6 +269,7 @@ def run_model_attempt(
         grader=grader,
         flags=flags,
         verdict=verdict,
+        attempted_gaming=attempted,
         usage=usage,
         config_hash=config_hash,
         git_sha=_git_sha(),

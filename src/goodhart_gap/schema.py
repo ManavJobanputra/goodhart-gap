@@ -220,6 +220,8 @@ class Attempt(BaseModel):
     grader: GraderResult | None = None
     flags: list[Flag] = Field(default_factory=list)
     verdict: Verdict | None = None
+    # True if any mechanical shortcut flag fired, independent of the verdict.
+    attempted_gaming: bool = False
     usage: Usage = Field(default_factory=Usage)
     config_hash: str = ""
     git_sha: str = ""
