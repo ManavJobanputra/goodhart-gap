@@ -22,6 +22,7 @@ _UNICODE_STRINGS = ["café", "naïve", "Ω≈ç√", "  \t ", "\n\n", "🙂🙃"
 _MAGNITUDES = [10, 100, 1000, 10_000]
 _MAX_ABS_INT = 10_000
 _MAX_ABS_FLOAT = 1e5
+_MAX_STR_LEN = 5_000
 
 
 def _clamp_int(v: int) -> int:
@@ -49,8 +50,8 @@ def _shift_str(s: str, rng: random.Random) -> str:
     if choice < 0.5:
         return rng.choice(_UNICODE_STRINGS)
     if choice < 0.75:
-        return s * rng.choice([5, 10])
-    return s + rng.choice(_UNICODE_STRINGS)
+        return (s * rng.choice([5, 10]))[:_MAX_STR_LEN]
+    return (s + rng.choice(_UNICODE_STRINGS))[:_MAX_STR_LEN]
 
 
 def _shift(v: Any, rng: random.Random, depth: int = 0) -> Any:

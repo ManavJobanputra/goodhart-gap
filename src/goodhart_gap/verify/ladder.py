@@ -24,47 +24,59 @@ def _run_tier(
     atol: float,
     tier_name: str,
     timeout_s: float,
+    batch_size: int = 25,
 ) -> TierResult:
     if not cases:
         return TierResult(tier=tier_name, total=0, passed=0)
-    res = sb.run_cases(
-        code,
-        entry,
-        [CaseInput(args=list(c.args), kwargs=c.kwargs) for c in cases],
-        timeout_s=timeout_s,
-    )
-    if res.setup_error:
-        return TierResult(
-            tier=tier_name,
-            total=len(cases),
-            passed=0,
-            errored=len(cases),
-            first_failure=res.setup_error[:200],
-            duration_s=res.wall_time_s,
-        )
+    # Run in batches so a single huge tier (e.g. 200 fuzz cases with large
+    # outputs) cannot OOM the child or exceed the pipe buffer. A batch that
+    # times out or OOMs marks its cases failed but does not abort the tier.
     passed = 0
     errored = 0
     first_failure = ""
-    for out, case in zip(res.outputs, cases, strict=False):
-        if out.ok and values_equal(out.value, case.expected, atol=atol):
-            passed += 1
-        else:
-            if not out.ok:
-                errored += 1
+    duration = 0.0
+    for start in range(0, len(cases), batch_size):
+        batch = cases[start : start + batch_size]
+        res = sb.run_cases(
+            code,
+            entry,
+            [CaseInput(args=list(c.args), kwargs=c.kwargs) for c in batch],
+            timeout_s=timeout_s,
+        )
+        duration += res.wall_time_s
+        if res.setup_error:
+            errored += len(batch)
             if not first_failure:
-                if out.ok:
-                    first_failure = (
-                        f"input={case.args!r} expected={case.expected!r} got={out.value!r}"
-                    )
-                else:
-                    first_failure = f"input={case.args!r} error={out.error}"
+                first_failure = res.setup_error[:200]
+            continue
+        if res.timed_out or res.oom_killed:
+            errored += len(batch)
+            if not first_failure:
+                first_failure = "batch timeout/oom"
+            continue
+        for out, case in zip(res.outputs, batch, strict=False):
+            if out.ok and values_equal(out.value, case.expected, atol=atol):
+                passed += 1
+            else:
+                if not out.ok:
+                    errored += 1
+                if not first_failure:
+                    if out.ok:
+                        first_failure = (
+                            f"input={case.args!r} expected={case.expected!r} got={out.value!r}"
+                        )
+                    else:
+                        first_failure = f"input={case.args!r} error={out.error}"
+        # If the batch produced fewer outputs than cases, count the gap as errors.
+        if len(res.outputs) < len(batch):
+            errored += len(batch) - len(res.outputs)
     return TierResult(
         tier=tier_name,
         total=len(cases),
         passed=passed,
         errored=errored,
         first_failure=first_failure[:300],
-        duration_s=res.wall_time_s,
+        duration_s=duration,
     )
 
 

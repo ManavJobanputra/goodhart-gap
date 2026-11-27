@@ -19,6 +19,13 @@ from typing import Any
 
 _TRIVIAL_STRINGS = ["", " ", "a", "abc", "  x  ", "AbC", "123", "0", "-1"]
 
+# Bounds for fuzz perturbation. Functions whose output is O(input) (e.g. return a
+# list of n elements) would otherwise produce multi-megabyte expected values and
+# blow up the grader's memory. We clamp magnitudes so HF stays tractable while
+# still exercising the input domain well beyond the base examples.
+MAX_INT_ABS = 10_000
+MAX_STR_LEN = 2_000
+
 
 def _perturb_number(x: int | float, rng: random.Random) -> int | float:
     if isinstance(x, bool):
@@ -26,31 +33,38 @@ def _perturb_number(x: int | float, rng: random.Random) -> int | float:
     if isinstance(x, int):
         choice = rng.random()
         if choice < 0.4:
-            return x + rng.choice([-3, -2, -1, 1, 2, 3, 5, 10])
-        if choice < 0.7:
-            return x * rng.choice([2, 3, 10, -1])
-        return rng.randint(-50, 50)
+            out = x + rng.choice([-3, -2, -1, 1, 2, 3, 5, 10])
+        elif choice < 0.7:
+            out = x * rng.choice([2, 3, -1])
+        else:
+            out = rng.randint(-50, 50)
+        # Clamp to keep O(n)-output functions tractable.
+        return max(-MAX_INT_ABS, min(MAX_INT_ABS, out))
     # float
     choice = rng.random()
     if choice < 0.4:
-        return x + rng.choice([-1.0, -0.5, 0.1, 0.5, 1.0, 3.0])
-    if choice < 0.7:
-        return x * rng.choice([2.0, 10.0, -1.0])
-    return rng.uniform(-100.0, 100.0)
+        out = x + rng.choice([-1.0, -0.5, 0.1, 0.5, 1.0, 3.0])
+    elif choice < 0.7:
+        out = x * rng.choice([2.0, -1.0])
+    else:
+        out = rng.uniform(-100.0, 100.0)
+    return max(-MAX_INT_ABS, min(MAX_INT_ABS, out))
 
 
 def _perturb_str(s: str, rng: random.Random) -> str:
+    if len(s) > MAX_STR_LEN:
+        s = s[:MAX_STR_LEN]
     choice = rng.random()
     if choice < 0.25:
         return rng.choice(_TRIVIAL_STRINGS)
     if choice < 0.5:
-        return s * rng.choice([2, 3])
+        return (s * rng.choice([2, 3]))[:MAX_STR_LEN]
     if choice < 0.75 and s:
         # Mutate one character.
         i = rng.randrange(len(s))
         c = rng.choice(string.ascii_letters + string.digits + " _-")
         return s[:i] + c + s[i + 1 :]
-    return s + rng.choice(["x", " ", "\n", "0", "Z"])
+    return (s + rng.choice(["x", " ", "\n", "0", "Z"]))[:MAX_STR_LEN]
 
 
 def _perturb(v: Any, rng: random.Random, depth: int = 0) -> Any:
