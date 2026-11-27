@@ -11,7 +11,7 @@ from tests.unit.conftest import make_simple_task
 
 @pytest.fixture
 def sb() -> SubprocessSandbox:
-    return SubprocessSandbox(poll_interval_s=0.02)
+    return SubprocessSandbox(poll_interval_s=0.02, isolation="off")
 
 
 def test_canonical_passes_all_tiers(simple_task, sb) -> None:

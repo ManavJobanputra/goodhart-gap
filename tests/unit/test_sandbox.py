@@ -12,7 +12,9 @@ from goodhart_gap.sandbox.subprocess_sandbox import SubprocessSandbox
 
 @pytest.fixture
 def sandbox() -> SubprocessSandbox:
-    return SubprocessSandbox(poll_interval_s=0.02)
+    # These tests exercise watchdog/limits/grading, not OS isolation, so they
+    # opt out of sandbox-exec explicitly (which also keeps them portable to CI).
+    return SubprocessSandbox(poll_interval_s=0.02, isolation="off")
 
 
 def test_basic_call(sandbox) -> None:
