@@ -16,3 +16,38 @@ Options: A) `pip install --user uv` (global-ish). B) Install uv into a
 project-local venv `.tools/` and invoke it by path.
 Chosen: B. Keeps the host clean. `.tools/` is gitignored.
 Revisit if: uv becomes available system-wide.
+
+## D-003 Content-addressed run cache for build determinism  (2026-11-27, M4)
+Context: Two consecutive `gg tasks build` runs produced different manifest hashes
+(8621ec41 vs 290b4ce3) and different difficulty/HS counts, violating INV-6.
+Root cause: screening/stability/determinism checks re-run candidate code in the
+sandbox; under load a run that times out once succeeds on rerun, so mutant
+selection is load-sensitive.
+Options: A) Increase timeouts (fragile, still load-dependent). B) Persist every
+build-time sandbox run by content hash (code+inputs+timeout+replica) and replay
+on rebuild. C) Drop the two-run stability checks (weakens guarantees).
+Chosen: B. A `replica` dimension keeps the intra-build two-run checks genuine
+while making cross-build replay exact. Verified: rebuild reproduces the manifest
+byte-for-byte and is ~3x faster.
+Revisit if: build-time behaviour must vary run-to-run (it must not, per INV-6).
+
+## D-004 Unique mutant ids by per-source index  (2026-11-27, M4)
+Context: `task_id = "{source}::{operator}"` collided when one source yielded two
+mutants of the same operator, silently overwriting tasks (712 built → 636 files).
+Chosen: suffix with `#{len(chosen)}` (deterministic per source). Counts now match
+(712 = 278 he + 434 mbpp).
+
+## D-005 [REVIEW] Task mix is skewed toward blatant / two operators  (2026-11-27, M4)
+Context: The built set (714 tasks) is dominated by `blatant` difficulty
+(580 / 714) with only 40 `subtle`; `arith_swap` + `const_offbyone` account for
+~483 / 714 (~68%). This follows from taking up to 2 mutants per source from
+whatever operators fire first, so easy operators win.
+Impact: results may over-represent "obvious bug" repair and under-represent the
+subtle cases that most stress apparent-vs-genuine competence (H-subtle in
+ANALYSIS_PLAN).
+Chosen now: do NOT change the build; document the skew and keep the current
+manifest for M4 acceptance.
+Plan: add a rebalancing option to `build_all` (e.g. `--target-difficulty` /
+`--operator-quota` that resamples or reorders candidates to hit per-difficulty
+and per-operator targets) before the main experiment; re-validate and re-tag.
+Revisit if: pilot analysis shows difficulty/operator imbalance confounds results.
