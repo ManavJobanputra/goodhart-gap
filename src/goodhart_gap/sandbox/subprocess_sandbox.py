@@ -4,6 +4,12 @@ Implements INV-2 (inputs only to child, outputs over a dedicated fd), INV-3
 (values cross the boundary via the tagged-JSON codec), and INV-4 (scrubbed env,
 temp cwd, timeouts, RSS watchdog, process-group kill).
 
+On macOS the child is additionally wrapped in a `sandbox-exec` profile that
+denies network access, denies writes outside the child's temp dir, and denies
+reads of the repository `data/` directory and of `$HOME` (except the Python/venv
+paths the child needs). If isolation is unavailable the sandbox FAILS CLOSED
+unless GG_ALLOW_UNSAFE_SANDBOX=1 is set (loud warning). See docs/THREAT_MODEL.md.
+
 macOS notes: RLIMIT_AS is unreliable, so memory is capped by polling child RSS
 via psutil and killing the whole process group. Children are started with
 start_new_session=True so grandchildren cannot outlive the grader.
@@ -19,6 +25,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from pathlib import Path
 from typing import Any
 
 from goodhart_gap.sandbox.base import CaseInput, CaseOutput, RunResult
@@ -38,18 +45,72 @@ def _scrubbed_env(tmpdir: str) -> dict[str, str]:
     return env
 
 
-def _child_command() -> list[str]:
-    # Launch the child runner as a module so it uses the same interpreter.
-    # -I isolates from user site-packages and PYTHON* env vars; the child still
-    # sees ordinary env vars like GG_RESULT_FD (needed to locate the result fd).
-    return [sys.executable, "-I", "-m", "goodhart_gap.sandbox.child_runner"]
+def _default_deny_read_dirs() -> list[str]:
+    """Directories a sandboxed child must not read: the repo data/ tree.
+
+    $HOME is added separately by build_profile. We deny the repository data
+    directory (hidden tiers, expected outputs, run cache) so even a candidate
+    that somehow learns its path cannot read hidden expectations (INV-1).
+    """
+    dirs: list[str] = []
+    with contextlib.suppress(Exception):
+        # Walk up from this file to the project root (contains pyproject.toml).
+        here = Path(__file__).resolve()
+        for parent in here.parents:
+            data = parent / "data"
+            if (parent / "pyproject.toml").exists() and data.exists():
+                dirs.append(str(data))
+                break
+    return dirs
 
 
 class SubprocessSandbox:
-    """Run candidate code in a subprocess with resource limits."""
+    """Run candidate code in a subprocess with resource limits and (on macOS)
+    an OS-level sandbox-exec profile denying network, writes outside the temp
+    dir, and reads of the repo data dir / $HOME.
 
-    def __init__(self, poll_interval_s: float = 0.05) -> None:
+    Isolation policy:
+      - On macOS with sandbox-exec, children run isolated by default.
+      - If isolation is requested but unavailable (e.g. Linux CI), the sandbox
+        FAILS CLOSED unless GG_ALLOW_UNSAFE_SANDBOX=1 is set, in which case it
+        logs a loud warning and runs without OS isolation.
+      - Pass isolation="off" to explicitly opt out (used by unit tests that
+        exercise the watchdog/limits, which do not need OS isolation).
+    """
+
+    def __init__(
+        self,
+        poll_interval_s: float = 0.05,
+        *,
+        isolation: str = "auto",
+        deny_read_dirs: list[str] | None = None,
+    ) -> None:
         self.poll_interval_s = poll_interval_s
+        self._deny_read_dirs = deny_read_dirs or _default_deny_read_dirs()
+        from goodhart_gap.sandbox.profile_macos import (
+            SandboxUnavailableError,
+            resolve_isolation,
+            sandbox_exec_available,
+        )
+
+        allow_unsafe = os.environ.get("GG_ALLOW_UNSAFE_SANDBOX") == "1"
+        available = sandbox_exec_available()
+        mode = resolve_isolation(isolation, available, allow_unsafe)
+        if mode == "fail":
+            raise SandboxUnavailableError(
+                "OS sandbox isolation is required but sandbox-exec is unavailable. "
+                "Set GG_ALLOW_UNSAFE_SANDBOX=1 to run WITHOUT isolation (unsafe)."
+            )
+        if mode == "unsafe" and isolation != "off":
+            import sys as _sys
+
+            print(
+                "WARNING: running candidate code WITHOUT OS isolation "
+                "(GG_ALLOW_UNSAFE_SANDBOX=1). Network and filesystem are NOT "
+                "restricted; this is unsafe for untrusted code.",
+                file=_sys.stderr,
+            )
+        self._isolation = mode
 
     def run_cases(
         self,
@@ -76,8 +137,9 @@ class SubprocessSandbox:
             read_fd, write_fd = os.pipe()
             env["GG_RESULT_FD"] = str(write_fd)
             try:
+                cmd = self._child_command(tmpdir)
                 proc = subprocess.Popen(
-                    _child_command(),
+                    cmd,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
@@ -97,6 +159,16 @@ class SubprocessSandbox:
             finally:
                 os.close(read_fd)
         return result
+
+    def _child_command(self, tmpdir: str) -> list[str]:
+        """Build the child command, wrapped in sandbox-exec when isolating."""
+        base = [sys.executable, "-I", "-m", "goodhart_gap.sandbox.child_runner"]
+        if self._isolation == "isolated":
+            from goodhart_gap.sandbox.profile_macos import build_profile, wrap_command
+
+            profile = build_profile(tmpdir, deny_read_dirs=self._deny_read_dirs)
+            return wrap_command(base, profile)
+        return base
 
     def _monitor(
         self,

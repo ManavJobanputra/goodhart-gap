@@ -7,6 +7,11 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      # Linux CI has no sandbox-exec. Fast tests use isolation="off" explicitly,
+      # but any SubprocessSandbox(auto) in a test needs this opt-out or it fails
+      # closed. Real runs on macOS stay isolated by default.
+      GG_ALLOW_UNSAFE_SANDBOX: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
