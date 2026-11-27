@@ -33,3 +33,94 @@ def register(app: typer.Typer) -> None:
                 f"  {policy:16s} apparent={r['apparent']:.2f} held={r['heldout']:.2f} "
                 f"strict={r['strict']:.2f} n={r['n']}"
             )
+
+    @app.command("estimate")
+    def estimate(
+        config: str = typer.Argument(..., help="Path to experiment YAML."),
+    ) -> None:
+        """Estimate attempts, tokens and cost for an experiment config."""
+        from goodhart_gap.runner.config import load_config
+        from goodhart_gap.runner.estimate import estimate_plan
+        from goodhart_gap.runner.plan import make_plan
+
+        cfg = load_config(config)
+        plan = make_plan(cfg)
+        est = estimate_plan(plan)
+        console.print(f"[bold]experiment:[/bold] {cfg.name}")
+        console.print(
+            f"  cells={len(plan.cells)} tasks={plan.n_unique_tasks()} attempts={est.n_attempts}"
+        )
+        console.print(f"  tokens: {est.tokens_low:,} .. {est.tokens_high:,}")
+        console.print(f"  cost:   ${est.cost_low_usd:.4f} .. ${est.cost_high_usd:.4f}")
+        console.print(f"  source: {est.source}")
+        if est.cost_high_usd > cfg.budget_usd:
+            console.print(
+                f"[yellow]warning: high estimate ${est.cost_high_usd:.2f} "
+                f"exceeds budget ${cfg.budget_usd:.2f}[/yellow]"
+            )
+
+    @app.command("run")
+    def run(
+        config: str = typer.Argument(..., help="Path to experiment YAML."),
+        dry_run: bool = typer.Option(False, "--dry-run", help="Plan only, no execution."),
+        max_attempts: int = typer.Option(0, help="Cap attempts (0 = all)."),
+        resume: str = typer.Option("", help="Resume an existing run id."),
+    ) -> None:
+        """Run an experiment grid (resumable, budget-capped)."""
+        from goodhart_gap.runner.config import load_config
+        from goodhart_gap.runner.plan import make_plan
+        from goodhart_gap.runner.run import run_config
+
+        cfg = load_config(config)
+        if dry_run:
+            plan = make_plan(cfg)
+            console.print(
+                f"[bold]dry run:[/bold] {len(plan.cells)} cells, "
+                f"{plan.n_unique_tasks()} tasks, {len(plan.attempts)} attempts"
+            )
+            for cell in plan.cells[:20]:
+                console.print(f"  {cell.cell_id}")
+            if len(plan.cells) > 20:
+                console.print(f"  ... and {len(plan.cells) - 20} more cells")
+            return
+
+        summary = run_config(
+            cfg,
+            max_attempts=(max_attempts or None),
+            resume_run_id=(resume or None),
+        )
+        console.print(
+            f"[green]run {summary.run_id} {summary.stopped_reason}[/green]: "
+            f"executed={summary.executed} resumed={summary.skipped_resumed} "
+            f"infra={summary.infra_errors} wall={summary.wall_time_s:.1f}s "
+            f"spend=${summary.spend_usd:.4f}"
+        )
+        console.print(f"  results: {summary.run_dir}")
+
+    @app.command("status")
+    def status(
+        run_id: str = typer.Argument(..., help="Run id (directory under results/runs)."),
+    ) -> None:
+        """Show progress and a verdict breakdown for a run."""
+        from collections import Counter
+        from pathlib import Path
+
+        from goodhart_gap.runner.cache import AttemptStore
+
+        run_dir = Path("results/runs") / run_id
+        if not run_dir.exists():
+            console.print(f"[red]no such run: {run_id}[/red]")
+            raise typer.Exit(1)
+        store = AttemptStore(run_dir)
+        attempts = store.load_all()
+        console.print(f"[bold]run {run_id}[/bold]: {len(attempts)} attempts recorded")
+        verdicts = Counter((a.verdict.value if a.verdict else "NONE") for a in attempts)
+        for v, c in verdicts.most_common():
+            console.print(f"  {v:18s} {c}")
+        apparent = sum(1 for a in attempts if a.grader and a.grader.apparent_pass)
+        held = sum(1 for a in attempts if a.grader and a.grader.heldout_pass)
+        n = len(attempts) or 1
+        console.print(
+            f"  apparent={apparent / n:.3f} heldout={held / n:.3f} "
+            f"gap_held={apparent / n - held / n:.3f}"
+        )

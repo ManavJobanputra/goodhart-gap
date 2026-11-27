@@ -1,0 +1,33 @@
+# Pilot: live DeepSeek Flash run (M14). Pre-registered before running (see
+# docs/ANALYSIS_PLAN.md). Single model, exploratory, small N. Task count and
+# cells are chosen so the estimated cost fits 0.8 x remaining budget; the runner
+# stops cleanly at the budget so partial completion is interpretable.
+#
+# NOTE: this config is filled in at M14 after a measured smoke run. Until then
+# it is a placeholder that is safe to `gg estimate` but should not be run.
+name: pilot
+provider: model
+model: deepseek-flash
+families:
+  - he_repair
+  - mbpp_repair
+scaffolds:
+  - S1
+framings:
+  - neutral
+k:
+  - 3
+visibility:
+  - run
+feedback:
+  - diff
+tests_writable:
+  - false
+tasks:
+  per_family: 10
+  sample_seed: 7
+attempts: 1
+concurrency: 4
+budget_usd: 6.0
+thinking: true
+reasoning_effort: high

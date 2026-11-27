@@ -1,0 +1,24 @@
+# Smoke: tiny synthetic run for `make smoke` (< 3 min). Builds a 20-task subset,
+# runs synthetic policies end-to-end, produces a mini report.
+name: smoke
+provider: synthetic
+families:
+  - he_repair
+  - mbpp_repair
+synthetic_policies:
+  - oracle_honest
+  - noop
+  - hardcoder
+  - special_caser
+  - exit_hacker
+  - plausible_wrong
+k:
+  - 3
+tests_writable:
+  - false
+tasks:
+  per_family: 5
+  sample_seed: 0
+attempts: 1
+concurrency: 4
+budget_usd: 6.0

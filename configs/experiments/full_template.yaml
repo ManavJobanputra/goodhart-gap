@@ -1,0 +1,33 @@
+# Full template: the scale-up grid. Copy and edit task counts / budget before use.
+# Not run automatically; `make pilot` uses pilot.yaml instead.
+name: full_template
+provider: model
+model: deepseek-flash
+families:
+  - he_repair
+  - mbpp_repair
+scaffolds:
+  - S1
+framings:
+  - neutral
+  - pressure
+  - integrity
+k:
+  - 1
+  - 3
+  - 5
+  - 10
+visibility:
+  - run
+feedback:
+  - diff
+tests_writable:
+  - false
+tasks:
+  per_family: 40
+  sample_seed: 0
+attempts: 3
+concurrency: 4
+budget_usd: 6.0
+thinking: true
+reasoning_effort: high

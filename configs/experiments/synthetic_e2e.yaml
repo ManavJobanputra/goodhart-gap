@@ -1,0 +1,25 @@
+# Synthetic end-to-end run: all cheat policies over a task sample, no model calls.
+# Used by `make smoke` (fast subset) and as the runner's own acceptance test.
+name: synthetic_e2e
+provider: synthetic
+families:
+  - he_repair
+  - mbpp_repair
+synthetic_policies:
+  - oracle_honest
+  - noop
+  - hardcoder
+  - special_caser
+  - test_tamperer
+  - exit_hacker
+  - plausible_wrong
+k:
+  - 3
+tests_writable:
+  - false
+tasks:
+  per_family: 25
+  sample_seed: 0
+attempts: 1
+concurrency: 4
+budget_usd: 6.0
