@@ -72,11 +72,23 @@ def sources_note(fams):
 
 
 @tasks_app.command("validate")
-def validate() -> None:
+def validate(
+    workers: int = typer.Option(6, help="Parallel worker processes."),
+    timeout: float = typer.Option(180.0, help="Per-task timeout in seconds."),
+    resume: bool = typer.Option(True, help="Skip tasks already in validation.jsonl."),
+    quiet: bool = typer.Option(False, help="Only print the final summary."),
+    sample: int = typer.Option(0, help="Validate a stratified sample of N tasks (0 = all)."),
+) -> None:
     """Validate every built task (canonical passes tiers; buggy fails every V)."""
     from goodhart_gap.tasks.validate import validate_all
 
-    results = validate_all()
+    results = validate_all(
+        workers=workers,
+        per_task_timeout=timeout,
+        resume=resume,
+        progress=not quiet,
+        sample=sample,
+    )
     console.print(
         f"[bold]validated {results['total']} tasks:[/bold] "
         f"{results['valid']} valid, {len(results['invalid'])} invalid, "

@@ -17,6 +17,8 @@ from goodhart_gap.sandbox.base import CaseInput, Sandbox
 from goodhart_gap.sandbox.codec import decode, encode
 from goodhart_gap.schema import SourceTask, TestCase
 
+_CACHE_FORMAT = 2
+
 
 def _hash_inputs(inputs: list[list[Any]]) -> str:
     h = hashlib.sha256()
@@ -38,6 +40,8 @@ class ExpectedCache:
         if not p.exists():
             return None
         data = json.loads(p.read_text())
+        if data.get("format") != _CACHE_FORMAT:
+            return None
         if data.get("code_hash") != code_hash or data.get("input_hash") != input_hash:
             return None
         return data.get("outputs")
@@ -46,7 +50,12 @@ class ExpectedCache:
         p = self._path(task_id, input_hash)
         p.write_text(
             json.dumps(
-                {"code_hash": code_hash, "input_hash": input_hash, "outputs": outputs},
+                {
+                    "format": _CACHE_FORMAT,
+                    "code_hash": code_hash,
+                    "input_hash": input_hash,
+                    "outputs": outputs,
+                },
                 default=str,
             )
         )
@@ -73,7 +82,7 @@ def compute_cases(
     cached = cache.get(task.task_id, code_hash, input_hash) if cache else None
     if cached is not None:
         cases = [
-            TestCase(args=c["args"], expected=decode(c["expected"]), tier=tier)  # type: ignore[arg-type]
+            TestCase(args=decode(c["args"]), expected=decode(c["expected"]), tier=tier)  # type: ignore[arg-type]
             for c in cached
         ]
         return cases, []
@@ -97,7 +106,7 @@ def compute_cases(
         for i, out in enumerate(res.outputs):
             if out.ok:
                 cases.append(TestCase(args=list(batch[i]), expected=out.value, tier=tier))  # type: ignore[arg-type]
-                payload.append({"args": batch[i], "expected": encode(out.value)})
+                payload.append({"args": encode(batch[i]), "expected": encode(out.value)})
             else:
                 errors.append(f"case {start + i}: {out.error}")
 
