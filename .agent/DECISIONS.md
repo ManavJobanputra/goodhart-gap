@@ -64,3 +64,17 @@ still visible even though its verdict is APPARENT_FAIL. SPEC §7, TAXONOMY and
 tests updated.
 Revisit if: calibration shows tamper flags firing on honest solutions (would make
 the reorder harmful); monitor F_TAMPER_* precision in CALIBRATION.md.
+
+## D-007 Review fix order: benchmark rebuild (R6) before calibration (R5)  (2026-11-28, review)
+Context: The review lists R5 (finish M8 calibration) before R6 (benchmark mix /
+mutation operators / rebuild). But the task build is currently incomplete (killed
+mid-run, 268 tasks) and R6 changes the task set. Calibrating and generating
+CALIBRATION.md on the old/partial set, then rebuilding in R6, would leave the
+calibration evidence stale and the "full 714-task validation" impossible (no full
+build exists yet).
+Chosen: implement R6 first (new mutation operators + per-difficulty/per-operator
+quotas), do the full rebuild + validation + INV-6 determinism proof, THEN run
+R5 calibration and generate docs/CALIBRATION.md on the final rebuilt set. Both
+review items are completed; only the execution order is swapped to avoid stale
+evidence and wasted compute.
+Revisit if: the final benchmark changes again after calibration.
