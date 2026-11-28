@@ -14,6 +14,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import math
 import random
 import warnings
 from pathlib import Path
@@ -159,6 +160,22 @@ def build_all(
         if len(t.hs) < HS_TARGET:
             hs_shortfalls.append({"task_id": t.task_id, "hs": len(t.hs)})
 
+    # Record achieved quota compliance so any residual shortfall is explicit.
+    n_sel = max(1, len(selected))
+    ms_frac = (
+        stats.difficulty_counts.get("medium", 0) + stats.difficulty_counts.get("subtle", 0)
+    ) / n_sel
+    op_fracs = {op: c / n_sel for op, c in stats.operator_counts.items()}
+    quota_status = {
+        "achieved_medium_subtle_frac": round(ms_frac, 4),
+        "min_medium_subtle_frac": MIN_MEDIUM_SUBTLE_FRAC,
+        "medium_subtle_floor_met": ms_frac + 1e-9 >= MIN_MEDIUM_SUBTLE_FRAC,
+        "max_operator_frac": round(max(op_fracs.values()), 4) if op_fracs else 0.0,
+        "operator_cap_frac": OPERATOR_CAP_FRAC,
+        "operator_cap_met": all(f <= OPERATOR_CAP_FRAC + 1e-9 for f in op_fracs.values()),
+        "pool_size": len(candidates),
+    }
+
     manifest = {
         "build_seed": BUILD_SEED,
         "families": [f.value for f in families],
@@ -169,6 +186,7 @@ def build_all(
             "operator_cap_frac": OPERATOR_CAP_FRAC,
             "min_medium_subtle_frac": MIN_MEDIUM_SUBTLE_FRAC,
             "max_mutants_per_source": MAX_MUTANTS_PER_SOURCE,
+            "status": quota_status,
         },
         "skipped": stats.skipped,
         "hs_shortfalls": hs_shortfalls,
@@ -236,18 +254,31 @@ def select_by_quota(candidates: list[Task], build_seed: int = BUILD_SEED) -> lis
             lo = mid
         else:
             hi = mid - 1
-    target_total = lo
+    cap_total = lo
     # The cap is a target, not a hard invariant. If it is mathematically
     # infeasible (e.g. the pool is dominated by one operator so even one task
     # would exceed the cap), fall back to a best-effort non-empty selection so a
     # build is never silently emptied. In practice 13 operators make it feasible.
     relaxed_cap = OPERATOR_CAP_FRAC
-    if target_total == 0 and candidates:
-        target_total = min(len(candidates), max(1, len(op_supply)))
+    if cap_total == 0 and candidates:
+        cap_total = min(len(candidates), max(1, len(op_supply)))
         relaxed_cap = 1.0
 
+    # Difficulty floor is supply-limited: if the pool has only M medium+subtle
+    # tasks, a set of size N can satisfy the floor only if M/N >= MIN_MS_FRAC, i.e.
+    # N <= M/MIN_MS_FRAC. Shrink the target total toward that so the emitted set
+    # MEETS the floor rather than violating it (a smaller quota-compliant set is
+    # preferable to a larger non-compliant one). If there is no medium+subtle
+    # supply at all, we cannot meet the floor and record the violation instead.
+    ms_supply = len(by_diff.get("subtle", [])) + len(by_diff.get("medium", []))
+    floor_total = int(ms_supply / MIN_MEDIUM_SUBTLE_FRAC) if ms_supply else 0
+    target_total = min(cap_total, floor_total) if ms_supply else cap_total
+    target_total = max(target_total, min(len(candidates), 1))
+
     # Difficulty floor: aim for at least MIN_MEDIUM_SUBTLE_FRAC medium+subtle.
-    ms_target = int(target_total * MIN_MEDIUM_SUBTLE_FRAC)
+    # Use ceil so that ms_target/target_total actually meets the fraction (floor
+    # rounding can land just under it, e.g. 19/66 = 0.288 < 0.30).
+    ms_target = math.ceil(target_total * MIN_MEDIUM_SUBTLE_FRAC)
 
     op_counts: dict[str, int] = {}
     chosen: list[Task] = []

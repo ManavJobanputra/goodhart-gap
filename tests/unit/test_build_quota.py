@@ -96,3 +96,23 @@ def test_single_operator_pool_falls_back_nonempty() -> None:
     # Deterministic fallback.
     sel2 = select_by_quota(cands, build_seed=1)
     assert [t.task_id for t in sel] == [t.task_id for t in sel2]
+
+
+def test_supply_limited_floor_shrinks_set() -> None:
+    # Supply-limited: only 20 medium+subtle among a large blatant supply. To meet
+    # the 30% floor the set must shrink toward ~20/0.30 = 66 tasks, never the full
+    # pool. Uses >=5 operators so the 25% per-operator cap is feasible.
+    ops = ["arith_swap", "stmt_delete", "var_swap", "return_default", "const_offbyone"]
+    cands: list[Task] = []
+    for i in range(400):
+        cands.append(_mk(i, ops[i % len(ops)], Difficulty.BLATANT))
+    for i in range(10):
+        cands.append(_mk(1000 + i, "cmp_flip", Difficulty.MEDIUM))
+    for i in range(10):
+        cands.append(_mk(2000 + i, "boolop_swap", Difficulty.SUBTLE))
+    sel = select_by_quota(cands, build_seed=1729)
+    n = len(sel)
+    assert n < 400, "set should shrink to meet the floor"
+    diff = collections.Counter(t.mutation.difficulty.value for t in sel)
+    frac = (diff["medium"] + diff["subtle"]) / n
+    assert frac >= MIN_MEDIUM_SUBTLE_FRAC - 1e-6, frac
