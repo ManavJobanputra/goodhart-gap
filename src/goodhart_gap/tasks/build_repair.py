@@ -87,18 +87,70 @@ def _fails_any(
     entry: str,
     cases: list[TestCase],
     atol: float,
+    *,
+    short_circuit: bool = True,
+    timeout_s: float = 15.0,
 ) -> tuple[bool, int]:
-    """Return (any_fail, n_fail) for the given cases."""
+    """Return (any_fail, n_fail) for the given cases.
+
+    With short_circuit=True (the default) we stop at the first batch that shows a
+    failure. Screening only needs to know *whether* a mutant fails, so this
+    avoids paying the per-batch timeout for every batch of a slow/looping mutant
+    (which dominated build time). n_fail is then a lower bound when short-circuited.
+    """
     if not cases:
         return False, 0
-    res = _run_code(sb, code, entry, [c.args for c in cases])
-    if res.setup_error:
-        return True, len(cases)
+    if not short_circuit:
+        res = _run_code(sb, code, entry, [c.args for c in cases], timeout_s=timeout_s)
+        if res.setup_error:
+            return True, len(cases)
+        n_fail = 0
+        for out, case in zip(res.outputs, cases, strict=False):
+            if not out.ok or not values_equal(out.value, case.expected, atol=atol):
+                n_fail += 1
+        return n_fail > 0, n_fail
+
     n_fail = 0
-    for out, case in zip(res.outputs, cases, strict=False):
-        if not out.ok or not values_equal(out.value, case.expected, atol=atol):
-            n_fail += 1
-    return n_fail > 0, n_fail
+    batch_size = 25
+    for start in range(0, len(cases), batch_size):
+        batch = cases[start : start + batch_size]
+        res = _run_code(sb, code, entry, [c.args for c in batch], timeout_s=timeout_s)
+        if res.setup_error:
+            return True, len(cases)
+        for out, case in zip(res.outputs, batch, strict=False):
+            if not out.ok or not values_equal(out.value, case.expected, atol=atol):
+                n_fail += 1
+        if n_fail > 0:
+            return True, n_fail
+    return False, n_fail
+
+
+def _times_out(
+    sb: Sandbox,
+    code: str,
+    entry: str,
+    cases: list[TestCase],
+    *,
+    timeout_s: float = 4.0,
+) -> bool:
+    """Cheap termination probe: True if the code times out on any small batch.
+
+    Used to reject mutants that introduce infinite loops before the expensive
+    screening/stability runs (each timed-out batch otherwise costs a full
+    timeout, which dominated build time after adding loop/statement operators).
+    """
+    if not cases:
+        return False
+    probe = cases[:10]
+    res = sb.run_cases(
+        code,
+        entry,
+        [CaseInput(args=list(c.args)) for c in probe],
+        timeout_s=timeout_s,
+    )
+    if res.setup_error:
+        return False
+    return bool(res.timed_out or res.oom_killed)
 
 
 def build_task(
@@ -173,7 +225,14 @@ def build_task(
         except SyntaxError:
             continue
 
-        # (b) screen: must fail >=1 sampled HI∪HF case.
+        # (a2) Termination probe: a mutant that hangs (infinite loop) is both an
+        # unrealistic repair target and extremely expensive to screen (each slow
+        # batch costs a full timeout). Probe a few cases with a short timeout and
+        # reject the mutant if any batch times out.
+        if _times_out(sb, cand.source, src.entry_point, screen_cases[:10], timeout_s=4.0):
+            continue
+
+        # (b) screen: must fail >=1 sampled HI∪HF case (short-circuits).
         fails_screen, n_fail_screen = _fails_any(
             sb, cand.source, src.entry_point, screen_cases, src.atol
         )
