@@ -1,4 +1,4 @@
-# HumanEval/0::cmp_flip#1
+# HumanEval/0::var_swap#2
 
 - family: `he_repair`  entry: `has_close_elements`  atol: `0.0`
 - visible tiers: [1, 3, 5, 10]  HI: 190  HF: 300  HS: 60
@@ -27,18 +27,18 @@ def has_close_elements(numbers: List[float], threshold: float) -> bool:
     >>> has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3)
     True
     """
-    sorted_numbers = sorted(numbers)
+    sorted_numbers = List(numbers)
     for i in range(len(sorted_numbers) - 1):
-        if sorted_numbers[i + 1] - sorted_numbers[i] <= threshold:
+        if sorted_numbers[i + 1] - sorted_numbers[i] < threshold:
             return True
     return False
 ```
 
 ## Visible tests (k=3 shown)
 
+- `has_close_elements([1.0, 2.0, 3.9, 4.0, 5.0, 2.2], 0.05)` → `False`
 - `has_close_elements([1.0, 2.0, 5.9, 4.0, 5.0], 0.95)` → `True`
-- `has_close_elements([1.1, 2.2, 3.1, 4.1, 5.1], 1.0)` → `True`
-- `has_close_elements([1.0, 2.0, 3.0, 4.0, 5.0], 1.0)` → `False`
+- `has_close_elements([1.0, 2.0, 3.0, 4.0, 5.0, 2.0], 0.1)` → `True`
 
 ---
 ## ANSWER KEY (for human review only — never shown to agents)
@@ -64,4 +64,4 @@ def has_close_elements(numbers: List[float], threshold: float) -> bool:
     return False
 ```
 
-Mutation: `cmp_flip` (Lt → LtE); fail fraction 0.025; difficulty `subtle`.
+Mutation: `var_swap` (sorted → List); fail fraction 1.000; difficulty `blatant`.

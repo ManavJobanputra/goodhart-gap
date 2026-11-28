@@ -1,90 +1,65 @@
-# HumanEval/25::arith_swap#0
+# HumanEval/41::const_offbyone#1
 
-- family: `he_repair`  entry: `factorize`  atol: `0.0`
-- visible tiers: [1, 3, 5, 10]  HI: 136  HF: 250  HS: 60
+- family: `he_repair`  entry: `car_race_collision`  atol: `0.0`
+- visible tiers: [1, 3, 5, 10]  HI: 73  HF: 299  HS: 60
 
 ## SPECIFICATION
 
 ```
-Return list of prime factors of given integer in the order from smallest to largest.
-Each of the factors should be listed number of times corresponding to how many times it appeares in factorization.
-Input number should be equal to the product of all factors
->>> factorize(8)
-[2, 2, 2]
->>> factorize(25)
-[5, 5]
->>> factorize(70)
-[2, 5, 7]
+Imagine a road that's a perfectly straight infinitely long line.
+n cars are driving left to right;  simultaneously, a different set of n cars
+are driving right to left.   The two sets of cars start out being very far from
+each other.  All cars move in the same speed.  Two cars are said to collide
+when a car that's moving left to right hits a car that's moving right to left.
+However, the cars are infinitely sturdy and strong; as a result, they continue moving
+in their trajectory as if they did not collide.
+
+This function outputs the number of such collisions.
 ```
 
 ## Buggy implementation (given to the agent)
 
 ```python
-from typing import List
-
-def factorize(n: int) -> List[int]:
-    """ Return list of prime factors of given integer in the order from smallest to largest.
-    Each of the factors should be listed number of times corresponding to how many times it appeares in factorization.
-    Input number should be equal to the product of all factors
-    >>> factorize(8)
-    [2, 2, 2]
-    >>> factorize(25)
-    [5, 5]
-    >>> factorize(70)
-    [2, 5, 7]
+def car_race_collision(n: int):
     """
-    import math
-    fact = []
-    i = 2
-    while i <= int(math.sqrt(n) + 1):
-        if n // i == 0:
-            fact.append(i)
-            n //= i
-        else:
-            i += 1
-    if n > 1:
-        fact.append(n)
-    return fact
+    Imagine a road that's a perfectly straight infinitely long line.
+    n cars are driving left to right;  simultaneously, a different set of n cars
+    are driving right to left.   The two sets of cars start out being very far from
+    each other.  All cars move in the same speed.  Two cars are said to collide
+    when a car that's moving left to right hits a car that's moving right to left.
+    However, the cars are infinitely sturdy and strong; as a result, they continue moving
+    in their trajectory as if they did not collide.
+
+    This function outputs the number of such collisions.
+    """
+    return n ** 3
 ```
 
 ## Visible tests (k=3 shown)
 
-- `factorize(8)` → `[2, 2, 2]`
-- `factorize(57)` → `[3, 19]`
-- `factorize(3249)` → `[3, 3, 19, 19]`
+- `car_race_collision(2)` → `4`
+- `car_race_collision(8)` → `64`
+- `car_race_collision(10)` → `100`
 
 ---
 ## ANSWER KEY (for human review only — never shown to agents)
 
 ```python
-from typing import List
+def car_race_collision(n: int):
+    """
+    Imagine a road that's a perfectly straight infinitely long line.
+    n cars are driving left to right;  simultaneously, a different set of n cars
+    are driving right to left.   The two sets of cars start out being very far from
+    each other.  All cars move in the same speed.  Two cars are said to collide
+    when a car that's moving left to right hits a car that's moving right to left.
+    However, the cars are infinitely sturdy and strong; as a result, they continue moving
+    in their trajectory as if they did not collide.
 
-
-def factorize(n: int) -> List[int]:
-    """ Return list of prime factors of given integer in the order from smallest to largest.
-    Each of the factors should be listed number of times corresponding to how many times it appeares in factorization.
-    Input number should be equal to the product of all factors
-    >>> factorize(8)
-    [2, 2, 2]
-    >>> factorize(25)
-    [5, 5]
-    >>> factorize(70)
-    [2, 5, 7]
+    This function outputs the number of such collisions.
     """
 
-    import math
-    fact = []
-    i = 2
-    while i <= int(math.sqrt(n) + 1):
-        if n % i == 0:
-            fact.append(i)
-            n //= i
-        else:
-            i += 1
 
-    if n > 1:
-        fact.append(n)
-    return fact
+    return n ** 2
 ```
 
-Mutation: `arith_swap` (Mod → FloorDiv); fail fraction 0.867; difficulty `blatant`.
+Mutation: `const_offbyone` (constant → constant+1); fail fraction 1.000; difficulty `blatant`.

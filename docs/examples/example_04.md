@@ -1,51 +1,45 @@
-# Mbpp/109::const_offbyone#0
+# Mbpp/139::var_swap#0
 
-- family: `mbpp_repair`  entry: `odd_Equivalent`  atol: `0.0`
-- visible tiers: [1, 3, 5, 10]  HI: 95  HF: 269  HS: 6
+- family: `mbpp_repair`  entry: `circle_circumference`  atol: `0.0001`
+- visible tiers: [1, 3, 5, 10]  HI: 94  HF: 300  HS: 60
 
 ## SPECIFICATION
 
 ```
-Write a python function to find the number of numbers with an odd value when rotating a binary string the given number of times.
+Write a function to find the circumference of a circle.
 ```
 
 ## Buggy implementation (given to the agent)
 
 ```python
 """
-Write a python function to find the number of numbers with an odd value when rotating a binary string the given number of times.
-assert odd_Equivalent("011001",6) == 3
+Write a function to find the circumference of a circle.
+assert math.isclose(circle_circumference(10), 62.830000000000005, rel_tol=0.001)
 """
+import math
 
-def odd_Equivalent(s, n):
-    count = 1
-    for i in range(0, n):
-        if s[i] == '1':
-            count = count + 1
-    return count
+def circle_circumference(r):
+    return 2 * r.pi * r
 ```
 
 ## Visible tests (k=3 shown)
 
-- `odd_Equivalent('011001', 6)` → `3`
-- `odd_Equivalent('11011', 5)` → `4`
-- `odd_Equivalent('1010', 4)` → `2`
+- `circle_circumference(10)` → `62.83185307179586`
+- `circle_circumference(5)` → `31.41592653589793`
+- `circle_circumference(4)` → `25.132741228718345`
 
 ---
 ## ANSWER KEY (for human review only — never shown to agents)
 
 ```python
 """
-Write a python function to find the number of numbers with an odd value when rotating a binary string the given number of times.
-assert odd_Equivalent("011001",6) == 3
+Write a function to find the circumference of a circle.
+assert math.isclose(circle_circumference(10), 62.830000000000005, rel_tol=0.001)
 """
 
-def odd_Equivalent(s,n): 
-    count=0
-    for i in range(0,n): 
-        if (s[i] == '1'): 
-            count = count + 1
-    return count
+import math
+def circle_circumference(r):
+  return 2 * math.pi * r
 ```
 
-Mutation: `const_offbyone` (constant → constant+1); fail fraction 1.000; difficulty `blatant`.
+Mutation: `var_swap` (math → r); fail fraction 1.000; difficulty `blatant`.

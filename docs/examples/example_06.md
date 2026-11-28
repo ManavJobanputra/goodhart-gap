@@ -1,7 +1,7 @@
-# Mbpp/3::const_offbyone#0
+# Mbpp/3::var_swap#2
 
 - family: `mbpp_repair`  entry: `is_not_prime`  atol: `0.0`
-- visible tiers: [1, 3, 5, 10]  HI: 98  HF: 228  HS: 60
+- visible tiers: [1, 3, 5, 10]  HI: 98  HF: 207  HS: 60
 
 ## SPECIFICATION
 
@@ -22,7 +22,7 @@ def is_not_prime(n):
     if n == 1:
         return True
     for i in range(2, int(math.sqrt(n)) + 1):
-        if n % i == 1:
+        if i % i == 0:
             return True
     return False
 ```
@@ -52,4 +52,4 @@ def is_not_prime(n):
     return False
 ```
 
-Mutation: `const_offbyone` (constant → constant+1); fail fraction 0.275; difficulty `medium`.
+Mutation: `var_swap` (n → i); fail fraction 0.092; difficulty `medium`.

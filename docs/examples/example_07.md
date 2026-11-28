@@ -1,53 +1,59 @@
-# Mbpp/556::arith_swap#1
+# Mbpp/559::stmt_delete#0
 
-- family: `mbpp_repair`  entry: `find_Odd_Pair`  atol: `0.0`
-- visible tiers: [1, 3, 5, 10]  HI: 96  HF: 252  HS: 26
+- family: `mbpp_repair`  entry: `max_sub_array_sum`  atol: `0.0`
+- visible tiers: [1, 3, 5, 10]  HI: 102  HF: 245  HS: 31
 
 ## SPECIFICATION
 
 ```
-Write a python function to count the number of pairs whose xor value is odd.
+Write a function to find the sum of the largest contiguous sublist in the given list.
 ```
 
 ## Buggy implementation (given to the agent)
 
 ```python
 """
-Write a python function to count the number of pairs whose xor value is odd.
-assert find_Odd_Pair([5,4,7,2,1],5) == 6
+Write a function to find the sum of the largest contiguous sublist in the given list.
+assert max_sub_array_sum([-2, -3, 4, -1, -2, 1, 5, -3], 8) == 7
 """
 
-def find_Odd_Pair(A, N):
-    oddPair = 0
-    for i in range(0, N):
-        for j in range(i - 1, N):
-            if (A[i] ^ A[j]) % 2 != 0:
-                oddPair += 1
-    return oddPair
+def max_sub_array_sum(a, size):
+    max_so_far = 0
+    max_ending_here = 0
+    for i in range(0, size):
+        max_ending_here = max_ending_here + a[i]
+        if max_ending_here < 0:
+            max_ending_here = 0
+        elif max_so_far < max_ending_here:
+            pass
+    return max_so_far
 ```
 
 ## Visible tests (k=3 shown)
 
-- `find_Odd_Pair([5, 4, 7, 2, 1], 5)` → `6`
-- `find_Odd_Pair([7, 2, 8, 1, 0, 5, 11], 7)` → `12`
-- `find_Odd_Pair([1, 2, 3], 3)` → `2`
+- `max_sub_array_sum([-2, -3, 4, -1, -2, 1, 5, -3], 8)` → `7`
+- `max_sub_array_sum([-3, -4, 5, -2, -3, 2, 6, -4], 8)` → `8`
+- `max_sub_array_sum([-4, -5, 6, -3, -4, 3, 7, -5], 8)` → `10`
 
 ---
 ## ANSWER KEY (for human review only — never shown to agents)
 
 ```python
 """
-Write a python function to count the number of pairs whose xor value is odd.
-assert find_Odd_Pair([5,4,7,2,1],5) == 6
+Write a function to find the sum of the largest contiguous sublist in the given list.
+assert max_sub_array_sum([-2, -3, 4, -1, -2, 1, 5, -3], 8) == 7
 """
 
-def find_Odd_Pair(A,N) : 
-    oddPair = 0
-    for i in range(0,N) :  
-        for j in range(i+1,N) :  
-            if ((A[i] ^ A[j]) % 2 != 0):  
-                oddPair+=1  
-    return oddPair
+def max_sub_array_sum(a, size):
+  max_so_far = 0
+  max_ending_here = 0
+  for i in range(0, size):
+    max_ending_here = max_ending_here + a[i]
+    if max_ending_here < 0:
+      max_ending_here = 0
+    elif (max_so_far < max_ending_here):
+      max_so_far = max_ending_here
+  return max_so_far
 ```
 
-Mutation: `arith_swap` (Add → Sub); fail fraction 0.400; difficulty `blatant`.
+Mutation: `stmt_delete` (Assign → pass); fail fraction 0.292; difficulty `medium`.

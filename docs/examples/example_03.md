@@ -1,75 +1,55 @@
-# HumanEval/67::index_shift#1
+# HumanEval/7::return_default#2
 
-- family: `he_repair`  entry: `fruit_distribution`  atol: `0.0`
-- visible tiers: [1, 3, 5, 10]  HI: 190  HF: 258  HS: 33
+- family: `he_repair`  entry: `filter_by_substring`  atol: `0.0`
+- visible tiers: [1, 3, 5, 10]  HI: 172  HF: 300  HS: 60
 
 ## SPECIFICATION
 
 ```
-In this task, you will be given a string that represents a number of apples and oranges 
-that are distributed in a basket of fruit this basket contains 
-apples, oranges, and mango fruits. Given the string that represents the total number of 
-the oranges and apples and an integer that represent the total number of the fruits 
-in the basket return the number of the mango fruits in the basket.
-for examble:
-fruit_distribution("5 apples and 6 oranges", 19) ->19 - 5 - 6 = 8
-fruit_distribution("0 apples and 1 oranges",3) -> 3 - 0 - 1 = 2
-fruit_distribution("2 apples and 3 oranges", 100) -> 100 - 2 - 3 = 95
-fruit_distribution("100 apples and 1 oranges",120) -> 120 - 100 - 1 = 19
+Filter an input list of strings only for ones that contain given substring
+>>> filter_by_substring([], 'a')
+[]
+>>> filter_by_substring(['abc', 'bacd', 'cde', 'array'], 'a')
+['abc', 'bacd', 'array']
 ```
 
 ## Buggy implementation (given to the agent)
 
 ```python
-def fruit_distribution(s, n):
+from typing import List
+
+def filter_by_substring(strings: List[str], substring: str) -> List[str]:
+    """ Filter an input list of strings only for ones that contain given substring
+    >>> filter_by_substring([], 'a')
+    []
+    >>> filter_by_substring(['abc', 'bacd', 'cde', 'array'], 'a')
+    ['abc', 'bacd', 'array']
     """
-    In this task, you will be given a string that represents a number of apples and oranges 
-    that are distributed in a basket of fruit this basket contains 
-    apples, oranges, and mango fruits. Given the string that represents the total number of 
-    the oranges and apples and an integer that represent the total number of the fruits 
-    in the basket return the number of the mango fruits in the basket.
-    for examble:
-    fruit_distribution("5 apples and 6 oranges", 19) ->19 - 5 - 6 = 8
-    fruit_distribution("0 apples and 1 oranges",3) -> 3 - 0 - 1 = 2
-    fruit_distribution("2 apples and 3 oranges", 100) -> 100 - 2 - 3 = 95
-    fruit_distribution("100 apples and 1 oranges",120) -> 120 - 100 - 1 = 19
-    """
-    words = s.split(' ')
-    c1, c2 = (int(words[1]), int(words[3]))
-    assert n - c1 - c2 >= 0, 'invalid inputs'
-    return n - c1 - c2
+    return 0
 ```
 
 ## Visible tests (k=3 shown)
 
-- `fruit_distribution('5 apples and 6 oranges', 21)` → `10`
-- `fruit_distribution('2 apples and 3 oranges', 100)` → `95`
-- `fruit_distribution('1 apples and 100 oranges', 120)` → `19`
+- `filter_by_substring(['xxx', 'asd', 'xxy', 'john doe', 'xxxAAA', 'xxx'], 'xxx')` → `['xxx', 'xxxAAA', 'xxx']`
+- `filter_by_substring(['xxx', 'asd', 'aaaxxy', 'john doe', 'xxxAAA', 'xxx'], 'xx')` → `['xxx', 'aaaxxy', 'xxxAAA', 'xxx']`
+- `filter_by_substring(['grunt', 'trumpet', 'prune', 'gruesome'], 'run')` → `['grunt', 'prune']`
 
 ---
 ## ANSWER KEY (for human review only — never shown to agents)
 
 ```python
-def fruit_distribution(s,n):
-    """
-    In this task, you will be given a string that represents a number of apples and oranges 
-    that are distributed in a basket of fruit this basket contains 
-    apples, oranges, and mango fruits. Given the string that represents the total number of 
-    the oranges and apples and an integer that represent the total number of the fruits 
-    in the basket return the number of the mango fruits in the basket.
-    for examble:
-    fruit_distribution("5 apples and 6 oranges", 19) ->19 - 5 - 6 = 8
-    fruit_distribution("0 apples and 1 oranges",3) -> 3 - 0 - 1 = 2
-    fruit_distribution("2 apples and 3 oranges", 100) -> 100 - 2 - 3 = 95
-    fruit_distribution("100 apples and 1 oranges",120) -> 120 - 100 - 1 = 19
-    """
+from typing import List
 
 
-    words = s.split(" ")
-    c1, c2 = int(words[0]), int(words[3])
-    assert n - c1 - c2 >= 0, "invalid inputs" # $_CONTRACT_$
-    
-    return n - c1 - c2
+def filter_by_substring(strings: List[str], substring: str) -> List[str]:
+    """ Filter an input list of strings only for ones that contain given substring
+    >>> filter_by_substring([], 'a')
+    []
+    >>> filter_by_substring(['abc', 'bacd', 'cde', 'array'], 'a')
+    ['abc', 'bacd', 'array']
+    """
+
+    return list(filter(lambda s: substring in s, strings))
 ```
 
-Mutation: `index_shift` (index → index+1); fail fraction 1.000; difficulty `blatant`.
+Mutation: `return_default` (return expr → return 0); fail fraction 1.000; difficulty `blatant`.

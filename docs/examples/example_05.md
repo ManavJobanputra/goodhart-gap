@@ -1,69 +1,43 @@
-# Mbpp/245::cmp_flip#1
+# Mbpp/261::return_default#0
 
-- family: `mbpp_repair`  entry: `max_sum`  atol: `0.0`
-- visible tiers: [1, 3, 5, 10]  HI: 94  HF: 300  HS: 60
+- family: `mbpp_repair`  entry: `division_elements`  atol: `0.0`
+- visible tiers: [1, 3, 5, 10]  HI: 94  HF: 284  HS: 60
 
 ## SPECIFICATION
 
 ```
-Write a function that takes an array and finds the maximum sum of a bitonic subsequence for the given array, where a sequence is bitonic if it is first increasing and then decreasing.
+Write a function that takes in two tuples and performs mathematical division operation element-wise across the given tuples.
 ```
 
 ## Buggy implementation (given to the agent)
 
 ```python
 """
-Write a function that takes an array and finds the maximum sum of a bitonic subsequence for the given array, where a sequence is bitonic if it is first increasing and then decreasing.
-assert max_sum([1, 15, 51, 45, 33, 100, 12, 18, 9]) == 194
+Write a function that takes in two tuples and performs mathematical division operation element-wise across the given tuples.
+assert division_elements((10, 4, 6, 9),(5, 2, 3, 3)) == (2, 2, 2, 3)
 """
 
-def max_sum(arr):
-    MSIBS = arr[:]
-    for i in range(len(arr)):
-        for j in range(0, i):
-            if arr[i] >= arr[j] and MSIBS[i] < MSIBS[j] + arr[i]:
-                MSIBS[i] = MSIBS[j] + arr[i]
-    MSDBS = arr[:]
-    for i in range(1, len(arr) + 1):
-        for j in range(1, i):
-            if arr[-i] > arr[-j] and MSDBS[-i] < MSDBS[-j] + arr[-i]:
-                MSDBS[-i] = MSDBS[-j] + arr[-i]
-    max_sum = float('-Inf')
-    for i, j, k in zip(MSIBS, MSDBS, arr):
-        max_sum = max(max_sum, i + j - k)
-    return max_sum
+def division_elements(test_tup1, test_tup2):
+    return 0
 ```
 
 ## Visible tests (k=3 shown)
 
-- `max_sum([1, 15, 51, 45, 33, 100, 12, 18, 9])` → `194`
-- `max_sum([2, 3, 14, 16, 21, 23, 29, 30])` → `138`
-- `max_sum([6, 9, 6, 7, 6, 5, 9, 4, 4, 3, 3, 1, 6, 9, 9])` → `41`
+- `division_elements((10, 4, 6, 9), (5, 2, 3, 3))` → `(2.0, 2.0, 2.0, 3.0)`
+- `division_elements((12, 6, 8, 16), (6, 3, 4, 4))` → `(2.0, 2.0, 2.0, 4.0)`
+- `division_elements((20, 14, 36, 18), (5, 7, 6, 9))` → `(4.0, 2.0, 6.0, 2.0)`
 
 ---
 ## ANSWER KEY (for human review only — never shown to agents)
 
 ```python
 """
-Write a function that takes an array and finds the maximum sum of a bitonic subsequence for the given array, where a sequence is bitonic if it is first increasing and then decreasing.
-assert max_sum([1, 15, 51, 45, 33, 100, 12, 18, 9]) == 194
+Write a function that takes in two tuples and performs mathematical division operation element-wise across the given tuples.
+assert division_elements((10, 4, 6, 9),(5, 2, 3, 3)) == (2, 2, 2, 3)
 """
 
-def max_sum(arr): 
-	MSIBS = arr[:] 
-	for i in range(len(arr)): 
-		for j in range(0, i): 
-			if arr[i] > arr[j] and MSIBS[i] < MSIBS[j] + arr[i]: 
-				MSIBS[i] = MSIBS[j] + arr[i] 
-	MSDBS = arr[:] 
-	for i in range(1, len(arr) + 1): 
-		for j in range(1, i): 
-			if arr[-i] > arr[-j] and MSDBS[-i] < MSDBS[-j] + arr[-i]: 
-				MSDBS[-i] = MSDBS[-j] + arr[-i] 
-	max_sum = float("-Inf") 
-	for i, j, k in zip(MSIBS, MSDBS, arr): 
-		max_sum = max(max_sum, i + j - k) 
-	return max_sum
+def division_elements(test_tup1, test_tup2):
+  return tuple(ele1 / ele2 for ele1, ele2 in zip(test_tup1, test_tup2))
 ```
 
-Mutation: `cmp_flip` (Gt → GtE); fail fraction 0.158; difficulty `medium`.
+Mutation: `return_default` (return expr → return 0); fail fraction 1.000; difficulty `blatant`.

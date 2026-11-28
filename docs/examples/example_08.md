@@ -1,51 +1,43 @@
-# Mbpp/633::const_offbyone#1
+# Mbpp/637::var_swap#1
 
-- family: `mbpp_repair`  entry: `pair_xor_Sum`  atol: `0.0`
-- visible tiers: [1, 3, 5, 10]  HI: 96  HF: 247  HS: 5
+- family: `mbpp_repair`  entry: `noprofit_noloss`  atol: `0.0`
+- visible tiers: [1, 3, 5, 10]  HI: 96  HF: 300  HS: 60
 
 ## SPECIFICATION
 
 ```
-Write a python function to find the sum of xor of all pairs of numbers in the given list.
+Write a function to check whether the given amount has no profit and no loss
 ```
 
 ## Buggy implementation (given to the agent)
 
 ```python
 """
-Write a python function to find the sum of xor of all pairs of numbers in the given list.
-assert pair_xor_Sum([5,9,7,6],4) == 47
+Write a function to check whether the given amount has no profit and no loss
+assert noprofit_noloss(1500,1200)==False
 """
 
-def pair_xor_Sum(arr, n):
-    ans = 1
-    for i in range(0, n):
-        for j in range(i + 1, n):
-            ans = ans + (arr[i] ^ arr[j])
-    return ans
+def noprofit_noloss(actual_cost, sale_amount):
+    return sale_amount == sale_amount
 ```
 
 ## Visible tests (k=3 shown)
 
-- `pair_xor_Sum([5, 9, 7, 6], 4)` → `47`
-- `pair_xor_Sum([7, 3, 5], 3)` → `12`
-- `pair_xor_Sum([7, 3], 2)` → `4`
+- `noprofit_noloss(1500, 1200)` → `False`
+- `noprofit_noloss(100, 100)` → `True`
+- `noprofit_noloss(2000, 5000)` → `False`
 
 ---
 ## ANSWER KEY (for human review only — never shown to agents)
 
 ```python
 """
-Write a python function to find the sum of xor of all pairs of numbers in the given list.
-assert pair_xor_Sum([5,9,7,6],4) == 47
+Write a function to check whether the given amount has no profit and no loss
+assert noprofit_noloss(1500,1200)==False
 """
 
-def pair_xor_Sum(arr,n) : 
-    ans = 0 
-    for i in range(0,n) :    
-        for j in range(i + 1,n) :   
-            ans = ans + (arr[i] ^ arr[j])          
-    return ans
+def noprofit_noloss(actual_cost, sale_amount): 
+  return actual_cost == sale_amount
 ```
 
-Mutation: `const_offbyone` (constant → constant+1); fail fraction 1.000; difficulty `blatant`.
+Mutation: `var_swap` (actual_cost → sale_amount); fail fraction 0.958; difficulty `blatant`.

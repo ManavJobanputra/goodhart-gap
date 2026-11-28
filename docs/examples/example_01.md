@@ -1,73 +1,68 @@
-# HumanEval/134::cond_negate#1
+# HumanEval/133::const_offbyone#1
 
-- family: `he_repair`  entry: `check_if_last_char_is_a_letter`  atol: `0.0`
+- family: `he_repair`  entry: `sum_squares`  atol: `0.0`
 - visible tiers: [1, 3, 5, 10]  HI: 190  HF: 300  HS: 60
 
 ## SPECIFICATION
 
 ```
-Create a function that returns True if the last character
-of a given string is an alphabetical character and is not
-a part of a word, and False otherwise.
-Note: "word" is a group of characters separated by space.
-
+You are given a list of numbers.
+You need to return the sum of squared numbers in the given list,
+round each element in the list to the upper int(Ceiling) first.
 Examples:
-check_if_last_char_is_a_letter("apple pie") ➞ False
-check_if_last_char_is_a_letter("apple pi e") ➞ True
-check_if_last_char_is_a_letter("apple pi e ") ➞ False
-check_if_last_char_is_a_letter("") ➞ False
+For lst = [1,2,3] the output should be 14
+For lst = [1,4,9] the output should be 98
+For lst = [1,3,5,7] the output should be 84
+For lst = [1.4,4.2,0] the output should be 29
+For lst = [-2.4,1,1] the output should be 6
 ```
 
 ## Buggy implementation (given to the agent)
 
 ```python
-def check_if_last_char_is_a_letter(txt):
-    """
-    Create a function that returns True if the last character
-    of a given string is an alphabetical character and is not
-    a part of a word, and False otherwise.
-    Note: "word" is a group of characters separated by space.
-
+def sum_squares(lst):
+    """You are given a list of numbers.
+    You need to return the sum of squared numbers in the given list,
+    round each element in the list to the upper int(Ceiling) first.
     Examples:
-    check_if_last_char_is_a_letter("apple pie") ➞ False
-    check_if_last_char_is_a_letter("apple pi e") ➞ True
-    check_if_last_char_is_a_letter("apple pi e ") ➞ False
-    check_if_last_char_is_a_letter("") ➞ False 
+    For lst = [1,2,3] the output should be 14
+    For lst = [1,4,9] the output should be 98
+    For lst = [1,3,5,7] the output should be 84
+    For lst = [1.4,4.2,0] the output should be 29
+    For lst = [-2.4,1,1] the output should be 6
+    
+
     """
-    if len(txt) == 0:
-        return False
-    if not len(txt) == 1:
-        return txt.isalpha()
-    return txt[-1].isalpha() and txt[-2] == ' '
+    import math
+    return sum(map(lambda x: math.ceil(x) ** 3, lst))
 ```
 
 ## Visible tests (k=3 shown)
 
-- `check_if_last_char_is_a_letter('apple')` → `False`
-- `check_if_last_char_is_a_letter('apple pi e')` → `True`
-- `check_if_last_char_is_a_letter('apple pi e ')` → `False`
+- `sum_squares([1, 3, 5, 7])` → `84`
+- `sum_squares([100, 1, 15, 2])` → `10230`
+- `sum_squares([10000, 10000])` → `200000000`
 
 ---
 ## ANSWER KEY (for human review only — never shown to agents)
 
 ```python
-def check_if_last_char_is_a_letter(txt):
-    '''
-    Create a function that returns True if the last character
-    of a given string is an alphabetical character and is not
-    a part of a word, and False otherwise.
-    Note: "word" is a group of characters separated by space.
-
+def sum_squares(lst):
+    """You are given a list of numbers.
+    You need to return the sum of squared numbers in the given list,
+    round each element in the list to the upper int(Ceiling) first.
     Examples:
-    check_if_last_char_is_a_letter("apple pie") ➞ False
-    check_if_last_char_is_a_letter("apple pi e") ➞ True
-    check_if_last_char_is_a_letter("apple pi e ") ➞ False
-    check_if_last_char_is_a_letter("") ➞ False 
-    '''
+    For lst = [1,2,3] the output should be 14
+    For lst = [1,4,9] the output should be 98
+    For lst = [1,3,5,7] the output should be 84
+    For lst = [1.4,4.2,0] the output should be 29
+    For lst = [-2.4,1,1] the output should be 6
+    
 
-    if len(txt) == 0: return False
-    if len(txt) == 1: return txt.isalpha()
-    return txt[-1].isalpha() and txt[-2] == " "
+    """
+
+    import math
+    return sum(map(lambda x: math.ceil(x) ** 2, lst))
 ```
 
-Mutation: `cond_negate` (if → if not); fail fraction 0.175; difficulty `medium`.
+Mutation: `const_offbyone` (constant → constant+1); fail fraction 0.992; difficulty `blatant`.
