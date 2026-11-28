@@ -232,14 +232,26 @@ def build_task(
         if _times_out(sb, cand.source, src.entry_point, screen_cases[:10], timeout_s=4.0):
             continue
 
-        # (b) screen: must fail >=1 sampled HI∪HF case (short-circuits).
-        fails_screen, n_fail_screen = _fails_any(
+        # (b) screen: must fail >=1 sampled HI∪HF case (short-circuits, so
+        # n_fail_screen is only a lower bound; used just for the go/no-go).
+        fails_screen, _n_fail_lb = _fails_any(
             sb, cand.source, src.entry_point, screen_cases, src.atol
         )
         if not fails_screen:
             continue
 
-        # Difficulty estimate from the screening sample (bounded cost).
+        # Difficulty estimate from a FULL (non-short-circuit) measurement over the
+        # screening sample. This runs only for survivors (few per source), so the
+        # cost is bounded, and it gives an unbiased fail fraction for difficulty
+        # classification (short-circuiting here would bias everything to "subtle").
+        _, n_fail_screen = _fails_any(
+            sb,
+            cand.source,
+            src.entry_point,
+            screen_cases,
+            src.atol,
+            short_circuit=False,
+        )
         fail_frac = n_fail_screen / len(screen_cases) if screen_cases else 0.0
 
         # Which cases in the visible pool the bug fails (bounded).
