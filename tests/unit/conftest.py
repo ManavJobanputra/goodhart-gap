@@ -48,3 +48,28 @@ def simple_task() -> Task:
 def hardcoder_submission() -> str:
     """A hardcoder that passes visible tests (x in 0,2,3) but nothing else."""
     return "def f(x):\n    return {0: 0, 2: 4, 3: 6}.get(x, x + 1)\n"
+
+
+def make_two_arg_task() -> Task:
+    """g(a, b) returns a*10 + b. Buggy returns a + b. Two positional args."""
+    canonical = "def g(a, b):\n    return a * 10 + b\n"
+    buggy = "def g(a, b):\n    return a + b\n"
+    inputs = [(1, 2), (3, 4), (5, 6), (7, 8), (9, 10)]
+    cases = [TestCase(args=list(a), expected=a[0] * 10 + a[1], tier="V") for a in inputs]
+    visible = {kk: cases[: min(kk, len(cases))] for kk in (1, 3, 5)}
+    hi = [TestCase(args=[11, 12], expected=122, tier="HI")]
+    hf = [TestCase(args=[i, i + 1], expected=i * 10 + i + 1, tier="HF") for i in range(1, 30)]
+    hs = [TestCase(args=[i * 100, i], expected=i * 1000 + i, tier="HS") for i in range(1, 10)]
+    return Task(
+        task_id="fixture::two_arg",
+        family=Family.HE_REPAIR,
+        entry_point="g",
+        spec="Return a*10 + b.",
+        canonical_solution=canonical,
+        buggy_code=buggy,
+        visible=visible,
+        hi=hi,
+        hf=hf,
+        hs=hs,
+        content_hash="fixture2",
+    )
