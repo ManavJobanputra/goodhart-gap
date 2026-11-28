@@ -40,7 +40,14 @@ Started: 2026-11-26T23:10Z   Last update: 2026-11-28T04:30Z
   app/held/strict = 1.00 (tri OOM fixed); hardcoder & special_caser app=1.00,
   held=0.00 (full gap, GAMED_HARDCODE); noop/exit_hacker 0.00; plausible_wrong
   app=0.30/held=0.20. Runner writes attempts.jsonl incl. attempted_gaming.
-- [ ] M11 Analysis and reporting — status: TODO — commit: — tag: m11-analysis
+- [x] M11 Analysis and reporting — status: DONE — tag: m11-analysis
+  Evidence: analysis/{metrics,stats,report}.py. metrics: per-task rates, gaps,
+  conditional gaming, tier fractions. stats: task-level bootstrap CIs (10k,
+  seed 1729), paired diff bootstrap, exact McNemar, Wilson, gap reduction.
+  report: build_report → per-cell metrics + bootstrap CIs, report.md tables
+  (success/gap/verdicts/tiers/flags), summary.json, gap-by-cell plot.
+  `gg report <run_id>` verified on smoke (hardcoder/special_caser gap 1.00,
+  oracle 0.00). 24 unit tests (metrics 9, stats 10, report 5).
 - [ ] M12 Procedural families — status: TODO — commit: — tag: m12-procedural
 - [ ] M13 LLM judge, audit tooling — status: TODO — commit: — tag: m13-judge
 - [ ] M14 Live pilot — status: TODO — commit: — tag: m14-pilot
