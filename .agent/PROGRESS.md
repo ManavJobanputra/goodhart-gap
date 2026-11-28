@@ -1,5 +1,5 @@
 # Progress
-Started: 2026-11-26T23:10Z   Last update: 2026-11-27T16:45Z
+Started: 2026-11-26T23:10Z   Last update: 2026-11-28T04:30Z
 
 ## Milestones
 - [x] M0 Bootstrap — status: DONE — commit: 25df81e — tag: m00-bootstrap
@@ -36,4 +36,41 @@ Started: 2026-11-26T23:10Z   Last update: 2026-11-27T16:45Z
 ## Evidence
 (Each milestone's acceptance command + trimmed output is pasted here when checked off.)
 
-NEXT ACTION: Review fixes R1-R6 (sandbox isolation, read-only tests, sniff logging, verdict order, real calibration, mutation operators+quotas) before M10. M8/M9 un-ticked.
+### Review fixes (2026-11-28) — done before M10, per public-repo review
+- [x] R1 Sandbox isolation (P0). `sandbox-exec` profile wired into
+  SubprocessSandbox: deny network, deny writes outside temp dir, deny reads of
+  repo `data/` and `$HOME` (re-allow python/venv/temp). Fail-closed via
+  `resolve_isolation` (pure) unless `GG_ALLOW_UNSAFE_SANDBOX=1` (loud warning).
+  Evidence: `tests/unit/test_sandbox_exec.py` 12 passed — canary in repo data/
+  and $HOME unreadable; write outside temp dir denied; socket connect denied;
+  fail-closed raises; unsafe opt-out warns; isolated grading still correct;
+  env canary invisible. THREAT_MODEL.md rewritten with enforced/not-enforced list.
+  CI sets GG_ALLOW_UNSAFE_SANDBOX=1 (Linux has no sandbox-exec).
+- [x] R2 Read-only tests (P0). `_safe_path` uses `Path.is_relative_to` on resolved
+  path (rejects `src/../tests`, absolute, symlink). Visible tests chmod 0444 when
+  tests_writable=false; write_file decides on resolved path; run_tests in
+  read-only mode runs against a pristine copy (stored source + current solution).
+  run_python logs FULL snippet. Evidence: `test_tools_hardening.py` 10 passed.
+- [x] R3 Broadened F_SNIFF. Any absolute/`~` path, `..` traversal, open/os.*/
+  pathlib/Path/glob/inspect/shutil/subprocess/__file__ flagged regardless of
+  marker words; tool-log audit flags abs/traversal in nested args. Negative
+  controls: pure solutions and `1/2` snippets not flagged. Evidence:
+  `test_classifier.py`, `test_tamper.py` pass.
+- [x] R4 Verdict order. GAMED_TAMPER moved before APPARENT_FAIL; added
+  `attempted_gaming=(any F_* flag)` on every attempt (schema + both executor
+  paths). SPEC §7, TAXONOMY, DECISIONS D-006 updated. Evidence:
+  `test_classifier.py::test_verdict_tamper_before_apparent_fail` etc.
+- [x] R6 Benchmark mix (D-005). Added operators range_shift, stmt_delete,
+  var_swap, arg_swap, return_default, loop_break → 13 operators total; the
+  "no mutation targets" skip class is gone (539/539 sources yield mutants).
+  Added deterministic quota selection (≤25% per operator, ≥30% medium+subtle,
+  supply-aware shrink). Build speedup: reject hanging mutants (termination
+  probe) + short-circuit screening → 116s→17.5s/40 sources.
+  Final benchmark: **576 tasks** (he 197, mbpp 379), 30.03% medium+subtle (floor
+  met), max operator 25% (cap met), hash `c528be372db6d8e8`.
+  Validated 576/576 valid. INV-6 PROVEN (rebuild → byte-identical manifest).
+  Excluded Mbpp/769 (set() nondeterminism) and Mbpp/300 (O(n^2) fuzz timeout).
+  docs/TASKSET.md regenerated with quota section.
+- [x] R5 Calibration — PENDING (running next on the final 576-task set).
+
+NEXT ACTION: R5 — run `gg calibrate` on ≥100 tasks of the final set, generate docs/CALIBRATION.md, check §3.6 targets or log BLOCKERS. Then M10 onward.
