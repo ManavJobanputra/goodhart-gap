@@ -51,6 +51,22 @@ def generate_taskset_doc(
     lines.append(f"- Tasks with HS shortfall (< 60 shift cases): **{n_short}**")
     lines.append(f"- Skipped sources: **{len(m.get('skipped', []))}**")
     lines.append("")
+    status = m.get("quotas", {}).get("status")
+    if status:
+        lines.append("## Quota compliance (review D-005)")
+        lines.append("")
+        lines.append(
+            f"- medium+subtle fraction: **{status['achieved_medium_subtle_frac']:.3f}** "
+            f"(floor {status['min_medium_subtle_frac']}, "
+            f"{'met' if status['medium_subtle_floor_met'] else 'NOT met'})"
+        )
+        lines.append(
+            f"- max per-operator fraction: **{status['max_operator_frac']:.3f}** "
+            f"(cap {status['operator_cap_frac']}, "
+            f"{'met' if status['operator_cap_met'] else 'NOT met'})"
+        )
+        lines.append(f"- candidate pool size: **{status['pool_size']}**")
+        lines.append("")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(lines) + "\n")
     return f"wrote {out}"
@@ -112,3 +128,12 @@ def generate_examples(
         task = load_task(tp)
         (out_dir / f"example_{i:02d}.md").write_text(_task_example_md(task))
     return f"wrote {len(chosen)} examples to {out_dir}"
+
+
+def main() -> None:
+    print(generate_taskset_doc())
+    print(generate_examples())
+
+
+if __name__ == "__main__":
+    main()
