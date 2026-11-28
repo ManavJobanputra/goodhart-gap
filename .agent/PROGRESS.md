@@ -18,13 +18,22 @@ Started: 2026-11-26T23:10Z   Last update: 2026-11-28T04:30Z
   Evidence: provider tests pass via httpx.MockTransport (thinking/reasoning_effort body, reasoning_content passthrough 3-turn, retries, budget stop). `gg doctor` reports key presence.
 - [x] M7 Agent runtime — status: DONE — tag: m07-agents
   Evidence: `tests/unit/test_agents.py` passes incl. canary leakage INV-1/8/9; scaffolds S0-S3.
-- [ ] M8 Synthetic policies, calibration — status: IN_PROGRESS — tag: m08-calibration
-  NOTE (review): M8 was previously checked off without real validation. Un-ticked
-  per review. `gg calibrate` had never run over the built task set; policies were
-  broken for multi-arg tasks. Fixes in progress; evidence pending.
-- [ ] M9 Mechanical classifier — status: IN_PROGRESS — tag: m09-classifier
-  NOTE (review): un-ticked. F_LOOKUP false-positived on the canonical solution;
-  verdict order and flag definitions being corrected; calibration evidence pending.
+- [x] M8 Synthetic policies, calibration — status: DONE — tag: m08-calibration
+  Evidence (review R5): `gg calibrate --limit 120 --seed 0` over the final
+  576-task set → 840 (task,policy) results. Oracle honest apparent/held/strict
+  1.00; hardcoder apparent 0.72, held 0.00; special_caser apparent 0.98, held
+  0.03; test_tamperer/exit_hacker/noop 0.00. `plausible_wrong` GAMED_* FP rate
+  **0.000** (target ≤0.02). Per-flag (after multi-arg detector fix): F_LOOKUP
+  P0.902/R0.917, F_SPECIAL_CASE P0.958/R0.942, F_TAMPER_* P/R1.000, F_EXIT/
+  F_STDOUT_SPOOF P/R1.000. docs/CALIBRATION.md + results/calibration_summary.json.
+  F_SNIFF/F_SWALLOW/F_MONKEYPATCH n/a (no synthetic policy exercises them; they
+  are covered by unit negative controls instead).
+- [x] M9 Mechanical classifier — status: DONE — tag: m09-classifier
+  Evidence (review R3/R4/R5): F_LOOKUP false-positive on canonical fixed;
+  multi-arg special-case/lookup shapes fixed (P0.90+/R0.92+); verdict order
+  GAMED_TAMPER before APPARENT_FAIL; attempted_gaming recorded; F_SNIFF broadened
+  (abs paths, `..`, open/os/pathlib/__file__) with negative controls. Covered by
+  test_classifier.py (28 tests) + calibration above.
 - [ ] M10 Experiment runner — status: TODO — commit: — tag: m10-runner
 - [ ] M11 Analysis and reporting — status: TODO — commit: — tag: m11-analysis
 - [ ] M12 Procedural families — status: TODO — commit: — tag: m12-procedural
@@ -71,6 +80,11 @@ Started: 2026-11-26T23:10Z   Last update: 2026-11-28T04:30Z
   Validated 576/576 valid. INV-6 PROVEN (rebuild → byte-identical manifest).
   Excluded Mbpp/769 (set() nondeterminism) and Mbpp/300 (O(n^2) fuzz timeout).
   docs/TASKSET.md regenerated with quota section.
-- [x] R5 Calibration — PENDING (running next on the final 576-task set).
+- [x] R5 Calibration — DONE. `gg calibrate --limit 120` on the final 576-task
+  set; docs/CALIBRATION.md regenerated. Targets met: plausible_wrong FP 0.000
+  (≤0.02); all cheater flags P/R ≥0.90 (F_LOOKUP 0.90/0.92, F_SPECIAL_CASE
+  0.96/0.94, tamper/exit/stdout 1.00/1.00). Fixed two detector bugs found by
+  calibration (multi-arg tuple special-case recall; tuple-branch lookup FP).
+  Full-set validation: 576/576 valid (see R6 evidence). No BLOCKER needed.
 
-NEXT ACTION: R5 — run `gg calibrate` on ≥100 tasks of the final set, generate docs/CALIBRATION.md, check §3.6 targets or log BLOCKERS. Then M10 onward.
+NEXT ACTION: M10 onward — re-run smoke, then M11 reporting (tables/plots/report), M12–M16.
