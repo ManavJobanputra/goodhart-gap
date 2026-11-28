@@ -17,9 +17,10 @@ EXCLUSIONS_PATH = DATA_DIR / "exclusions.json"
 
 
 def load_sources(families: list[Family] | None = None) -> list[SourceTask]:
-    tasks = load_all()
-    if families:
-        wanted = {f.value for f in families}
+    wanted = {f.value for f in families} if families else None
+    include_proc = wanted is None or Family.PROC_REPAIR.value in wanted
+    tasks = load_all(include_procedural=include_proc)
+    if wanted:
         tasks = [t for t in tasks if t.family.value in wanted]
     return tasks
 

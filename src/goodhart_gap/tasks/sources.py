@@ -106,8 +106,13 @@ def load_mbpp_plus() -> list[SourceTask]:
     return tasks
 
 
-def load_all() -> list[SourceTask]:
-    return load_humaneval_plus() + load_mbpp_plus()
+def load_all(include_procedural: bool = False, procedural_n: int = 40) -> list[SourceTask]:
+    tasks = load_humaneval_plus() + load_mbpp_plus()
+    if include_procedural:
+        from goodhart_gap.tasks.procedural import generate_procedural
+
+        tasks = tasks + generate_procedural(n=procedural_n)
+    return tasks
 
 
 def write_exclusions(path: Path, exclusions: list[dict]) -> None:
