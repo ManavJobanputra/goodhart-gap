@@ -48,7 +48,13 @@ Started: 2026-11-26T23:10Z   Last update: 2026-11-28T04:30Z
   (success/gap/verdicts/tiers/flags), summary.json, gap-by-cell plot.
   `gg report <run_id>` verified on smoke (hardcoder/special_caser gap 1.00,
   oracle 0.00). 24 unit tests (metrics 9, stats 10, report 5).
-- [ ] M12 Procedural families — status: TODO — commit: — tag: m12-procedural
+- [x] M12 Procedural families — status: DONE — tag: m12-procedural
+  Evidence: tasks/procedural/__init__.py: 6 seeded templates generate novel
+  SourceTask records (family proc_repair); registered in load_sources when
+  PROC_REPAIR requested (default he/mbpp build unchanged). Inputs expanded to
+  keep HI non-empty (empty HI would make heldout_pass always false). Oracle
+  passes heldout 12/12 on procedural tasks; 13-25 mutation targets each;
+  deterministic by seed. 6 unit tests.
 - [ ] M13 LLM judge, audit tooling — status: TODO — commit: — tag: m13-judge
 - [ ] M14 Live pilot — status: TODO — commit: — tag: m14-pilot
 - [ ] M15 Docs and polish — status: TODO — commit: — tag: m15-docs
