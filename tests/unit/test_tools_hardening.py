@@ -27,7 +27,9 @@ from tests.unit.conftest import make_simple_task
 
 
 def _ctx(ws, *, isolation: str = "off") -> ToolContext:
-    return ToolContext(workspace=ws, sb=SubprocessSandbox(poll_interval_s=0.02, isolation=isolation))
+    return ToolContext(
+        workspace=ws, sb=SubprocessSandbox(poll_interval_s=0.02, isolation=isolation)
+    )
 
 
 def test_write_escape_via_dotdot_rejected(tmp_path) -> None:

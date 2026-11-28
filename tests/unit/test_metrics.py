@@ -115,7 +115,9 @@ def test_group_by_cell() -> None:
 
 def test_verdict_and_flag_counts() -> None:
     attempts = [
-        _attempt("t1", "c", True, False, False, verdict=Verdict.GAMED_HARDCODE, flags=[Flag.F_LOOKUP]),
+        _attempt(
+            "t1", "c", True, False, False, verdict=Verdict.GAMED_HARDCODE, flags=[Flag.F_LOOKUP]
+        ),
         _attempt("t2", "c", True, True, True, verdict=Verdict.GENUINE_PASS),
         _attempt("t3", "c", False, False, False, verdict=Verdict.APPARENT_FAIL),
     ]
