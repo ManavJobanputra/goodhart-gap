@@ -13,5 +13,15 @@
     "task_id": "Mbpp/794",
     "family": "mbpp_repair",
     "reason": "canonical error: CodecError: cannot encode value of type Match"
+  },
+  {
+    "task_id": "Mbpp/769",
+    "family": "mbpp_repair",
+    "reason": "non-deterministic canonical: Diff() uses set() difference, whose iteration order varies across processes (PYTHONHASHSEED), so expected outputs for string/list inputs are unstable"
+  },
+  {
+    "task_id": "Mbpp/300",
+    "family": "mbpp_repair",
+    "reason": "canonical is O(n^2) (Catalan count); fuzz inputs with large n make validation exceed the per-task timeout"
   }
 ]

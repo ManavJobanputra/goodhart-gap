@@ -202,6 +202,12 @@ def validate_all(
     if sample and sample < len(task_paths):
         task_paths = _stratified_sample(task_paths, sample, sample_seed)
     done = _load_done(results_path) if resume else {}
+    # Only count results for tasks that exist in THIS build. A stale
+    # validation.jsonl from a previous build may contain orphan paths; including
+    # them inflates the totals and can surface invalid orphans that are not part
+    # of the current set.
+    current = set(task_paths)
+    done = {p: r for p, r in done.items() if p in current}
     todo = [p for p in task_paths if p not in done]
     if not resume and results_path.exists():
         results_path.unlink()
