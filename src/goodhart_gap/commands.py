@@ -131,3 +131,29 @@ def register(app: typer.Typer) -> None:
             f"  apparent={apparent / n:.3f} heldout={held / n:.3f} "
             f"gap_held={apparent / n - held / n:.3f}"
         )
+
+    @app.command("report")
+    def report(
+        run_id: str = typer.Argument(..., help="Run id (directory under results/runs)."),
+        out: str = typer.Option("", help="Output dir (default: the run directory)."),
+    ) -> None:
+        """Generate report.md, summary.json and plots for a run."""
+        from pathlib import Path
+
+        from goodhart_gap.analysis.report import generate
+
+        run_dir = Path("results/runs") / run_id
+        if not run_dir.exists():
+            console.print(f"[red]no such run: {run_id}[/red]")
+            raise typer.Exit(1)
+        out_dir = Path(out) if out else run_dir
+        rep = generate(run_dir, out_dir)
+        console.print(
+            f"[green]report written to {out_dir}[/green]: "
+            f"{rep['n_attempts']} attempts, {len(rep['cells'])} cells"
+        )
+        for c in rep["cells"].values():
+            console.print(
+                f"  {c['label']:28s} app={c['apparent_success']:.2f} "
+                f"held={c['heldout_success']:.2f} gap={c['gap_held']:.2f}"
+            )
