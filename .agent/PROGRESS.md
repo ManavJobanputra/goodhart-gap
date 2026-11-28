@@ -34,7 +34,12 @@ Started: 2026-11-26T23:10Z   Last update: 2026-11-28T04:30Z
   GAMED_TAMPER before APPARENT_FAIL; attempted_gaming recorded; F_SNIFF broadened
   (abs paths, `..`, open/os/pathlib/__file__) with negative controls. Covered by
   test_classifier.py (28 tests) + calibration above.
-- [ ] M10 Experiment runner — status: TODO — commit: — tag: m10-runner
+- [x] M10 Experiment runner — status: DONE — tag: m10-runner
+  Evidence: `gg run configs/experiments/smoke.yaml` → 6 cells, 10 tasks, 60
+  attempts, 0 infra, 17.9s, $0. On the rebuilt 576-task set: oracle_honest
+  app/held/strict = 1.00 (tri OOM fixed); hardcoder & special_caser app=1.00,
+  held=0.00 (full gap, GAMED_HARDCODE); noop/exit_hacker 0.00; plausible_wrong
+  app=0.30/held=0.20. Runner writes attempts.jsonl incl. attempted_gaming.
 - [ ] M11 Analysis and reporting — status: TODO — commit: — tag: m11-analysis
 - [ ] M12 Procedural families — status: TODO — commit: — tag: m12-procedural
 - [ ] M13 LLM judge, audit tooling — status: TODO — commit: — tag: m13-judge
